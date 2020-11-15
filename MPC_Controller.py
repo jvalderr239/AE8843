@@ -1,20 +1,20 @@
 import numpy as np
-from control import matlab as mat
 from scipy import integrate
 from scipy.linalg import solve_continuous_are
+import matplotlib.pyplot as plt
+from matplotlib import animation
 
 
 class MPC:
-    x = 0
-    y = 1
-    theta = 2
-    dT = .5
+    # state indices
+    xidx, yidx, thetaidx = 0, 1, 2
+    # control max vals
     v_max = 0.6
     v_min = -v_max
     omega_max = np.pi/4
     omega_min = -omega_max
     wheel_base = .7
-    t0, tf = 0, 5
+    t0, dT, tf = 0, .5,  5
     time = np.linspace(t0, tf, int(1/dT))
 
     def __init__(self, start_state, goal_state, start_control, N, Q, R):
@@ -36,19 +36,38 @@ class MPC:
         self.R = R
 
     def compute_state(self):
-
+        """
+        This method propagates the state of the system by the horizon
+        :return: Null
+        """
         temp = self.prediction_state[:self.num_states]
         self.state[:, [0]] = temp
 
         for idx in range(1, self.horizon):
-            print("Current initial state: \n")
-            print(temp, idx)
 
+            #print("----------------------------------")
+            #print("Current initial state: \n")
+            #print(temp, idx)
+            #print("----------------------------------")
             self.state[:, [idx]] = self.propagate(temp, idx)
             temp = self.state[:, [idx]]
 
-    def propagate(self, vector, idx):
+        "Plot troubleshoot"
+        color = 'red'
+        plt.plot(self.state[self.xidx,:], self.state[self.yidx, :],
+                 color=color, label='Vehicle')
+        plt.xlim([-5, 5])
+        plt.ylim([-10, 10])
+        plt.grid(axis='both', color='0.95')
+        plt.show()
 
+    def propagate(self, vector, idx):
+        """
+
+        :param vector: the current state of the system
+        :param idx: the current horizon at which the dynamics are estimated
+        :return: the next state of the system and an update to control matrix
+        """
         theta = vector[-1]
 
         b = np.array([[np.cos(theta), 0],
@@ -60,26 +79,84 @@ class MPC:
         sol = integrate.solve_ivp(
             self.sys_func, self.time, vector.T[0], args=(self.A, b, K), method='RK45', t_eval=self.time)
 
-        self.controls[:, [idx]] = np.matmul(-K, sol.y[:, [1]])
+        # Optimal Trajectory and Control
+        optimal_trajectory = sol.y
+        print(optimal_trajectory)
+        optimal_control = np.matmul(-K, optimal_trajectory)
+        # Only take the first action
+        self.controls[:, [idx]] = optimal_control[:, [1]]
+        # Apply control to current state
+
         return self.A.dot(vector) + self.dT*b.dot(self.controls[:, [idx]])
 
     def compute_objective_func(self):
         obj = 0
         for idx in range(self.horizon):
-            state_error = self.state[:, [idx]] - self.prediction_state[:, self.num_states:]
+            state_error = self.state[:, [idx]] - self.prediction_state.T[:, self.num_states:]
             control = self.controls[:, idx]
-            obj += state_error.T*self.Q*state_error + control*self.R*control
+            print("----STATE COST----")
+            xQx = self.quadratic_cost(state_error, self.Q)
+            print(state_error.T*self.Q*state_error)
+            print("----CONTROL COST----")
+            uRu = self.quadratic_cost(control, self.R)
+            obj += xQx + uRu
+        return obj
+
+    @staticmethod
+    def quadratic_cost(vector, cost): return np.matmul(np.matmul(vector.T, cost), vector)
 
     def compute_constraints(self):
         pass
 
     def sys_func(self, t, x, a, b, k):
-        print("X: ", "\t", str(x))
-        print("A", "\t", a, a.shape, "\t", t)
-        print("B", "\t", b, b.shape, "\t", t)
-        print("K", "\t", k, k.shape, "\t", t)
-        print("------current solution--------")
+        """
+
+        :param t: Current time at which the dynamics are evaluated
+        :param x: Current state of the system
+        :param a: the system matrix
+        :param b: the control matrix
+        :param k: the gain matrix
+        :return: state space evaluation
+        """
+        #print("------current solution--------")
+        #print("X: ", "\t", str(x))
+        #print("A", "\t", a, a.shape, "\t", t)
+        #print("B", "\t", b, b.shape, "\t", t)
+        #print("K", "\t", k, k.shape, "\t", t)
+        #print("----------------------------------")
         return np.matmul(a - b.dot(k), x.reshape(self.num_states, 1)).T
+
+    def plot_state_and_estimate(self):
+        pass
+
+
+class Plotter:
+    # Plot attributes
+    xlim, ylim = 5, 10
+    fig = plt.figure()
+    ax = plt.axes(xlim=(-xlim, xlim), ylim=(-ylim, ylim))
+    line = ax.plot([], [], lw=2)
+
+    # animation props
+    frames = 100
+
+    def __init__(self, dT):
+        self.dT = dT
+
+    def init(self):
+        self.line.set_data([], [])
+        return self.line
+
+    def animate(self, i):
+
+        self.line.set_data()
+        return self.line
+
+    def run(self):
+        anim = animation.FuncAnimation(fig=self.fig, func=self.animate, init_func= self.init,
+                                       frames= self.frames, interval=self.dT, blit=True)
+        anim.save('basic.mp4', fps=30)
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -92,10 +169,10 @@ if __name__ == '__main__':
     komega = 200
 
     # Choose horizon
-    horizon = 5
+    horizon = 10
     start = np.array([[0], [0], [np.pi/10]], dtype=np.float)
     goal = np.array([[2], [2], [0]], dtype=np.float)
-    start_control = np.full((2, 1), .06, dtype=np.float)
+    start_control = np.full((2, 1), 0, dtype=np.float)
 
     Q = np.array([[kx, 0, 0],
                   [0, ky, 0],
@@ -108,5 +185,7 @@ if __name__ == '__main__':
     # Start MPC
 
     dummy = MPC(start, goal, start_control, horizon, Q, R)
-    dummy.compute_state()
+    while dummy.compute_objective_func() > .5:
+
+        dummy.compute_state()
 
