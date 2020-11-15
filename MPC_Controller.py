@@ -1,7 +1,7 @@
 import numpy as np
 from control import matlab as mat
 from scipy import integrate
-
+from scipy import linalg
 
 class MPC:
     x = 0
@@ -51,7 +51,7 @@ class MPC:
         b = np.array([[np.cos(theta), 0],
                      [np.sin(theta), 0],
                      [0, 1]])
-        P = mat.care(self.A, b, self.Q, self.R)
+        P = linalg.solve_continuous_are(self.A, b, self.Q, self.R,)
         K = np.linalg.inv(self.R)*b.T*P
         self.controls[:, [idx]] = integrate.solve_ivp(self.sys_func, self.time, vector, args=(self.A, b, K))
         print(self.controls[:, [idx]])
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     # Choose horizon
     horizon = 5
     start = np.array([[0], [0], [0]])
-    goal = np.array([[2], [2], [0]])
+    goal = np.array([[0], [0], [0]])
     start_control = np.zeros((2, 1))
 
     Q = np.array([[kx, 0, 0],
