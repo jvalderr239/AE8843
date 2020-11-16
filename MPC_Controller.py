@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import integrate
-from scipy.linalg import solve_continuous_are
+from scipy import linalg as LA
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
@@ -16,24 +16,40 @@ class MPC:
     wheel_base = .7
     t0, dT, tf = 0, .5,  5
     time = np.linspace(t0, tf, int(1/dT))
+    time_elapsed = 0
 
-    def __init__(self, start_state, goal_state, start_control, N, Q, R):
+    def __init__(self, initial_state, goal_state, initial_control, N, Q, R):
 
         self.horizon = N
-        self.num_states = start_state.size
-        self.control_input = start_control
+        self.num_states = initial_state.size
+        self.control_input = initial_control
         self.num_controls = self.control_input.size
-        self.controls = np.zeros((self.num_controls, self.horizon))
-        self.controls[:, [0]] = start_control
-        self.prediction_state = np.concatenate([start_state, goal_state])
         self.state = np.zeros((self.num_states, self.horizon+1))
-        self.goal = goal
-        self.A = np.eye(self.num_states)
-        self.B = np.array([[np.cos(start_state[-1]), 0],
-                     [np.sin(start_state[-1]), 0],
-                     [0, 1]], dtype=np.float)
+        self.goal = goal_state
+        self.controls = np.zeros((self.num_controls, self.horizon))
+        self.controls[:, [0]] = initial_control
+        self.prediction_state = self.update_initial(initial_state)
+
+        self.A = np.array([[1, 0.1, 0.1], [0.1, 1, 0.1], [0.1, 0.1, 1]], dtype=np.float)
+        self.B = np.array([[np.cos(initial_state[self.thetaidx]), 0.1],
+                     [np.sin(initial_state[self.thetaidx]), 0],
+                     [0, .1]], dtype=np.float)
         self.Q = Q
         self.R = R
+        self.time_elapsed = 0
+        # Initialize animation
+        self.plot = Plotter(self.prediction_state[self.xidx],
+                            self.prediction_state[self.yidx],
+                            self.dT)
+
+    def update_initial(self, new_initial):
+        return np.concatenate([new_initial, self.goal])
+
+    def update_time(self):
+        self.time_elapsed += self.dT
+
+    def get_time_elapsed(self):
+        return self.time_elapsed
 
     def compute_state(self):
         """
@@ -45,13 +61,16 @@ class MPC:
 
         for idx in range(1, self.horizon):
 
-            #print("----------------------------------")
-            #print("Current initial state: \n")
-            #print(temp, idx)
-            #print("----------------------------------")
+            print("----------------------------------")
+            print("Current initial state and horizon: \n")
+            print(temp, "\t", idx)
+            print("----------------------------------")
             self.state[:, [idx]] = self.propagate(temp, idx)
             temp = self.state[:, [idx]]
+        self.update_time()
 
+        self.plot_state_and_estimate(self.state, self.get_time_elapsed())
+        """
         "Plot troubleshoot"
         color = 'red'
         plt.plot(self.state[self.xidx,:], self.state[self.yidx, :],
@@ -60,6 +79,9 @@ class MPC:
         plt.ylim([-10, 10])
         plt.grid(axis='both', color='0.95')
         plt.show()
+        """
+
+        return self.state
 
     def propagate(self, vector, idx):
         """
@@ -73,15 +95,22 @@ class MPC:
         b = np.array([[np.cos(theta), 0],
                      [np.sin(theta), 0],
                      [0, 1]], dtype=np.float)
-        P = solve_continuous_are(self.A, b, self.Q, self.R)
+        P = LA.solve_continuous_are(self.A, b, self.Q, self.R)
         K = np.linalg.inv(self.R).dot(np.dot(b.T, P))
+        eigVals, eigVecs = LA.eig(self.A-np.matmul(b, K))
 
+        # Project the solver
+        span = np.linspace(self.t0 + self.get_time_elapsed(), self.tf-self.get_time_elapsed(), int(1 / self.dT))
         sol = integrate.solve_ivp(
-            self.sys_func, self.time, vector.T[0], args=(self.A, b, K), method='RK45', t_eval=self.time)
+            fun=self.sys_func, t_span=span,
+            y0=vector.T[0], args=(self.A, b, K), method='RK45', t_eval=span
+            )
 
         # Optimal Trajectory and Control
+        print('----OPT TRAJ---')
+        print(sol.y)
         optimal_trajectory = sol.y
-        print(optimal_trajectory)
+        #print(optimal_trajectory)
         optimal_control = np.matmul(-K, optimal_trajectory)
         # Only take the first action
         self.controls[:, [idx]] = optimal_control[:, [1]]
@@ -94,16 +123,37 @@ class MPC:
         for idx in range(self.horizon):
             state_error = self.state[:, [idx]] - self.prediction_state.T[:, self.num_states:]
             control = self.controls[:, idx]
-            print("----STATE COST----")
             xQx = self.quadratic_cost(state_error, self.Q)
-            print(state_error.T*self.Q*state_error)
-            print("----CONTROL COST----")
             uRu = self.quadratic_cost(control, self.R)
             obj += xQx + uRu
-        return obj
+        print("---OBJECTIVE COST---")
+        print(LA.norm(obj))
+        print("----------")
+        return LA.norm(obj)
 
     @staticmethod
     def quadratic_cost(vector, cost): return np.matmul(np.matmul(vector.T, cost), vector)
+
+    @staticmethod
+    def dlqr(A, B, Q, R):
+        """Solve the discrete time lqr controller.
+
+        x[k+1] = A x[k] + B u[k]
+
+        cost = sum x[k].T*Q*x[k] + u[k].T*R*u[k]
+        """
+
+        # ref Bertsekas, p.151
+
+        # first, try to solve the ricatti equation
+        P = LA.solve_discrete_are(A, B, Q, R)
+
+        # compute the LQR gain
+        K = LA.inv(B.T * P * B + R) * (B.T * P * A)
+
+        eigVals, eigVecs = LA.eig(A - B * K)
+
+        return K, P, eigVals
 
     def compute_constraints(self):
         pass
@@ -126,57 +176,68 @@ class MPC:
         #print("----------------------------------")
         return np.matmul(a - b.dot(k), x.reshape(self.num_states, 1)).T
 
-    def plot_state_and_estimate(self):
-        pass
+    def plot_state_and_estimate(self, state, idx):
+
+        self.plot.set_state(state[self.xidx], state[self.yidx])
+        self.plot.animate(idx)
 
 
 class Plotter:
     # Plot attributes
-    xlim, ylim = 5, 10
+    xlim, ylim = 10, 10
     fig = plt.figure()
     ax = plt.axes(xlim=(-xlim, xlim), ylim=(-ylim, ylim))
-    line = ax.plot([], [], lw=2)
+    line, = ax.plot([], [], lw=2, color='red')
 
     # animation props
     frames = 100
 
-    def __init__(self, dT):
+    def __init__(self, x, y, dT):
         self.dT = dT
+        self.x = x
+        self.y = y
 
     def init(self):
         self.line.set_data([], [])
-        return self.line
+        return self.line,
+
+    def set_state(self, x, y):
+        self.x, self.y = x, y
+
+    def get_state(self): return self.x, self.y
 
     def animate(self, i):
-
-        self.line.set_data()
-        return self.line
+        x, y = self.get_state()
+        self.line.set_data(x, y)
+        return self.line,
 
     def run(self):
         anim = animation.FuncAnimation(fig=self.fig, func=self.animate, init_func= self.init,
-                                       frames= self.frames, interval=self.dT, blit=True)
+                                       frames=self.frames, interval=self.dT, blit=True)
         anim.save('basic.mp4', fps=30)
         plt.show()
 
 
 if __name__ == '__main__':
 
+
     # Define gains
-    kx = 15
-    ky = 10
-    ktheta = 1
-    kv = 100
-    komega = 200
+    kx = 100
+    ky = 100
+    ktheta = 100
+    kv = 10
+    komega = 2
 
     # Choose horizon
-    horizon = 10
-    start = np.array([[0], [0], [np.pi/10]], dtype=np.float)
-    goal = np.array([[2], [2], [0]], dtype=np.float)
-    start_control = np.full((2, 1), 0, dtype=np.float)
+    horizon = 5
+    start = np.array([[2], [2], [np.pi/3]], dtype=np.float)
+    goal = np.array([[8], [2], [0]], dtype=np.float)
+    start_control = np.full((2, 1), .2, dtype=np.float)
 
-    Q = np.array([[kx, 0, 0],
-                  [0, ky, 0],
-                  [0, 0, ktheta]], dtype=np.float)
+    Q = np.array([[kx, 0.1, 0.1],
+                  [0.1, ky, 0.1],
+                  [0.1, 0.1, ktheta]], dtype=np.float)
+
     R = np.array([[kv, 0], [0, komega]], dtype=np.float)
 
     counter = 0
@@ -185,7 +246,11 @@ if __name__ == '__main__':
     # Start MPC
 
     dummy = MPC(start, goal, start_control, horizon, Q, R)
-    while dummy.compute_objective_func() > .5:
+    while dummy.compute_objective_func() > .5 or dummy.get_time_elapsed() < dummy.tf:
 
-        dummy.compute_state()
+        xo = dummy.compute_state()
+        print("----UPDATING INITIAL STATE----")
+        print(xo[:, [1]])
+        dummy.update_initial(xo[:, [1]])
+
 
