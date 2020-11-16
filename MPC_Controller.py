@@ -59,27 +59,26 @@ class MPC:
         temp = self.prediction_state[:self.num_states]
         self.state[:, [0]] = temp
 
-        for idx in range(1, self.horizon):
-
-            print("----------------------------------")
-            print("Current initial state and horizon: \n")
-            print(temp, "\t", idx)
-            print("----------------------------------")
-            self.state[:, [idx]] = self.propagate(temp, idx)
+        for idx in range(1, self.horizon+1):
+            self.state[:, [idx]] = self.propagate(temp, idx-1)
             temp = self.state[:, [idx]]
         self.update_time()
 
-        self.plot_state_and_estimate(self.state, self.get_time_elapsed())
-        """
+        #self.plot_state_and_estimate(self.state, self.get_time_elapsed())
+        print("----------------------------------")
+        print("Current initial state and horizon: \n")
+        print(self.state[self.xidx,:], "\t", self.state[self.yidx, :])
+        print("----------------------------------")
         "Plot troubleshoot"
         color = 'red'
-        plt.plot(self.state[self.xidx,:], self.state[self.yidx, :],
-                 color=color, label='Vehicle')
-        plt.xlim([-5, 5])
-        plt.ylim([-10, 10])
+        plt.plot(self.state[self.xidx,:], self.state[self.yidx, :], 'r--',
+                 color=color, label='Vehicle Trajectory')
+        plt.legend()
+        plt.xlim([-20, 20])
+        plt.ylim([-20, 20])
         plt.grid(axis='both', color='0.95')
         plt.show()
-        """
+
 
         return self.state
 
@@ -91,6 +90,7 @@ class MPC:
         :return: the next state of the system and an update to control matrix
         """
         theta = vector[-1]
+        initial = vector.T[0]
 
         b = np.array([[np.cos(theta), 0],
                      [np.sin(theta), 0],
@@ -103,7 +103,7 @@ class MPC:
         span = np.linspace(self.t0 + self.get_time_elapsed(), self.tf-self.get_time_elapsed(), int(1 / self.dT))
         sol = integrate.solve_ivp(
             fun=self.sys_func, t_span=span,
-            y0=vector.T[0], args=(self.A, b, K), method='RK45', t_eval=span
+            y0=initial, args=(self.A, b, K), method='RK45', t_eval=span
             )
 
         # Optimal Trajectory and Control
@@ -222,11 +222,11 @@ if __name__ == '__main__':
 
 
     # Define gains
-    kx = 100
-    ky = 100
-    ktheta = 100
-    kv = 10
-    komega = 2
+    kx = 1
+    ky = 5
+    ktheta = 10
+    kv = 100
+    komega = .2
 
     # Choose horizon
     horizon = 5
@@ -251,6 +251,7 @@ if __name__ == '__main__':
         xo = dummy.compute_state()
         print("----UPDATING INITIAL STATE----")
         print(xo[:, [1]])
-        dummy.update_initial(xo[:, [1]])
+        dummy.update_initial(xo[:, [0]])
+
 
 
