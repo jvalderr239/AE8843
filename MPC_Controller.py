@@ -9,13 +9,14 @@ class MPC:
     # state indices
     xidx, yidx, thetaidx = 0, 1, 2
     # control max vals
-    v_max = 0.6
+    v_max = 3
     v_min = -v_max
-    omega_max = np.pi/4
+    omega_max = 5
     omega_min = -omega_max
     wheel_base = .7
     t0, dT, tf = 0, .5,  5
-    time = np.linspace(t0, tf, int(1/dT))
+    num_pts =int(1/dT)
+    time = np.linspace(t0, tf, num_pts)
     time_elapsed = 0
 
     def __init__(self, initial_state, goal_state, initial_control, N, Q, R):
@@ -25,12 +26,13 @@ class MPC:
         self.control_input = initial_control
         self.num_controls = self.control_input.size
         self.state = np.zeros((self.num_states, self.horizon+1))
+        self.start = initial_state
         self.goal = goal_state
         self.controls = np.zeros((self.num_controls, self.horizon))
         self.controls[:, [0]] = initial_control
-        self.prediction_state = self.update_initial(initial_state)
-
-        self.A = np.array([[1, 0.1, 0.1], [0.1, 1, 0.1], [0.1, 0.1, 1]], dtype=np.float)
+        self.prediction_state = []
+        self.update_initial(initial_state)
+        self.A = np.array([[1, 0.001, 0.001], [0.001, 1, 0.001], [0.001, 0.001, 1]], dtype=np.float)
         self.B = np.array([[np.cos(initial_state[self.thetaidx]), 0.1],
                      [np.sin(initial_state[self.thetaidx]), 0],
                      [0, .1]], dtype=np.float)
@@ -42,8 +44,10 @@ class MPC:
                             self.prediction_state[self.yidx],
                             self.dT)
 
+        self.previous_loc = self.start[:self.num_states-1]
+
     def update_initial(self, new_initial):
-        return np.concatenate([new_initial, self.goal])
+        self.prediction_state = np.concatenate([new_initial, self.goal])
 
     def update_time(self):
         self.time_elapsed += self.dT
@@ -60,72 +64,93 @@ class MPC:
         self.state[:, [0]] = temp
 
         for idx in range(1, self.horizon+1):
-            self.state[:, [idx]] = self.propagate(temp, idx-1)
+            dstate = self.propagate(temp, idx-1)
+            print(dstate)
+            self.state[:, [idx]] = self.state[:, [idx-1]] + dstate
             temp = self.state[:, [idx]]
         self.update_time()
+        self.troubleshoot()
+        return self.state
 
-        #self.plot_state_and_estimate(self.state, self.get_time_elapsed())
+    def troubleshoot(self):
         print("----------------------------------")
         print("Current initial state and horizon: \n")
-        print(self.state[self.xidx,:], "\t", self.state[self.yidx, :])
+        print(self.state[self.xidx, :], "\t", self.state[self.yidx, :])
         print("----------------------------------")
         "Plot troubleshoot"
         color = 'red'
-        plt.plot(self.state[self.xidx,:], self.state[self.yidx, :], 'r--',
-                 color=color, label='Vehicle Trajectory')
+        print("INITIAL")
+        current_initial = self.state[:self.num_states-1, [0]]
+        print(current_initial)
+        print("PREVIOUS")
+        print(self.previous_loc)
+        self.previous_loc = np.concatenate((self.previous_loc, current_initial), axis=1)
+
+        plt.plot(self.previous_loc[self.xidx],self.previous_loc[self.yidx], 'bx', label='Path Traveled')
+        plt.plot(self.goal[self.xidx], self.goal[self.yidx], 'gx', label='Goal')
+        plt.plot(self.state[self.xidx, :], self.state[self.yidx, :], 'r--',
+                 color=color, label='Predicted Trajectory')
         plt.legend()
         plt.xlim([-20, 20])
         plt.ylim([-20, 20])
         plt.grid(axis='both', color='0.95')
         plt.show()
 
-
-        return self.state
-
     def propagate(self, vector, idx):
         """
 
-        :param vector: the current state of the system
+        :param vector: the current deviation of the goal state
         :param idx: the current horizon at which the dynamics are estimated
         :return: the next state of the system and an update to control matrix
         """
-        theta = vector[-1]
-        initial = vector.T[0]
+        deviation_from_goal = vector.T[0]-self.goal.T[0]
+        print("GOAL")
+        print(deviation_from_goal[-1])
+
+        theta = deviation_from_goal[-1]
 
         b = np.array([[np.cos(theta), 0],
                      [np.sin(theta), 0],
                      [0, 1]], dtype=np.float)
-        P = LA.solve_continuous_are(self.A, b, self.Q, self.R)
+        P = LA.solve_discrete_are(self.A, b, self.Q, self.R)
         K = np.linalg.inv(self.R).dot(np.dot(b.T, P))
         eigVals, eigVecs = LA.eig(self.A-np.matmul(b, K))
 
         # Project the solver
-        span = np.linspace(self.t0 + self.get_time_elapsed(), self.tf-self.get_time_elapsed(), int(1 / self.dT))
+        span = np.linspace(
+            self.t0,
+            self.tf ,
+            self.num_pts
+        )
+        # Drive deviation to zero by solving xdot = (A-BK)x
         sol = integrate.solve_ivp(
-            fun=self.sys_func, t_span=span,
-            y0=initial, args=(self.A, b, K), method='RK45', t_eval=span
+            fun=self.sys_func,
+            t_span=span,
+            y0=deviation_from_goal,
+            args=(self.A, b, K),
+            method='RK45',
+            t_eval=span
             )
-
         # Optimal Trajectory and Control
-        print('----OPT TRAJ---')
-        print(sol.y)
         optimal_trajectory = sol.y
-        #print(optimal_trajectory)
         optimal_control = np.matmul(-K, optimal_trajectory)
         # Only take the first action
-        self.controls[:, [idx]] = optimal_control[:, [1]]
+        v_clippled = np.clip(optimal_control[0, [0]], self.v_min, self.v_max)
+        w_clipped = np.clip(optimal_control[1, [0]], self.omega_min, self.omega_max)
+        self.controls[:, [idx]] = np.array([v_clippled, w_clipped], dtype=float)
         # Apply control to current state
 
-        return self.A.dot(vector) + self.dT*b.dot(self.controls[:, [idx]])
+        return self.dT*np.matmul(b, self.controls[:, [idx]])
 
     def compute_objective_func(self):
+        #TODO: This function may not be needed but need to find a way to compute objective for RL
         obj = 0
         for idx in range(self.horizon):
             state_error = self.state[:, [idx]] - self.prediction_state.T[:, self.num_states:]
             control = self.controls[:, idx]
             xQx = self.quadratic_cost(state_error, self.Q)
             uRu = self.quadratic_cost(control, self.R)
-            obj += xQx + uRu
+            obj += .5*(xQx + uRu)
         print("---OBJECTIVE COST---")
         print(LA.norm(obj))
         print("----------")
@@ -133,27 +158,6 @@ class MPC:
 
     @staticmethod
     def quadratic_cost(vector, cost): return np.matmul(np.matmul(vector.T, cost), vector)
-
-    @staticmethod
-    def dlqr(A, B, Q, R):
-        """Solve the discrete time lqr controller.
-
-        x[k+1] = A x[k] + B u[k]
-
-        cost = sum x[k].T*Q*x[k] + u[k].T*R*u[k]
-        """
-
-        # ref Bertsekas, p.151
-
-        # first, try to solve the ricatti equation
-        P = LA.solve_discrete_are(A, B, Q, R)
-
-        # compute the LQR gain
-        K = LA.inv(B.T * P * B + R) * (B.T * P * A)
-
-        eigVals, eigVecs = LA.eig(A - B * K)
-
-        return K, P, eigVals
 
     def compute_constraints(self):
         pass
@@ -180,11 +184,13 @@ class MPC:
 
         self.plot.set_state(state[self.xidx], state[self.yidx])
         self.plot.animate(idx)
+        self.plot.run()
 
 
 class Plotter:
+    # TODO: fix animation class
     # Plot attributes
-    xlim, ylim = 10, 10
+    xlim, ylim = 20, 20
     fig = plt.figure()
     ax = plt.axes(xlim=(-xlim, xlim), ylim=(-ylim, ylim))
     line, = ax.plot([], [], lw=2, color='red')
@@ -214,7 +220,7 @@ class Plotter:
     def run(self):
         anim = animation.FuncAnimation(fig=self.fig, func=self.animate, init_func= self.init,
                                        frames=self.frames, interval=self.dT, blit=True)
-        anim.save('basic.mp4', fps=30)
+        #anim.save('basic.mp4', fps=30)
         plt.show()
 
 
@@ -222,23 +228,23 @@ if __name__ == '__main__':
 
 
     # Define gains
-    kx = 1
-    ky = 5
-    ktheta = 10
-    kv = 100
-    komega = .2
+    kx = np.sqrt(.4)
+    ky = np.sqrt(.2)
+    ktheta = np.sqrt(np.pi/10)
+    kv = .99
+    komega = 1.2
 
     # Choose horizon
     horizon = 5
-    start = np.array([[2], [2], [np.pi/3]], dtype=np.float)
-    goal = np.array([[8], [2], [0]], dtype=np.float)
-    start_control = np.full((2, 1), .2, dtype=np.float)
+    start = np.array([[-8], [-9], [np.pi/3]], dtype=np.float)
+    goal = np.array([[8], [9], [0]], dtype=np.float)
+    start_control = np.array([[.5], [0]], dtype=np.float)
 
-    Q = np.array([[kx, 0.1, 0.1],
-                  [0.1, ky, 0.1],
-                  [0.1, 0.1, ktheta]], dtype=np.float)
+    Q = np.array([[kx, 0, 0],
+                  [0, ky, 0],
+                  [0, 0, ktheta]], dtype=np.float)
 
-    R = np.array([[kv, 0], [0, komega]], dtype=np.float)
+    R = np.array([[kv, .001], [.001, komega]], dtype=np.float)
 
     counter = 0
     solution = []
@@ -251,7 +257,7 @@ if __name__ == '__main__':
         xo = dummy.compute_state()
         print("----UPDATING INITIAL STATE----")
         print(xo[:, [1]])
-        dummy.update_initial(xo[:, [0]])
+        dummy.update_initial(xo[:, [1]])
 
 
 
