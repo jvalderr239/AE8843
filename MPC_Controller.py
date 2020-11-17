@@ -14,10 +14,11 @@ class MPC:
     omega_max = 5
     omega_min = -omega_max
     wheel_base = .7
-    t0, dT, tf = 0, .5,  5
+    t0, dT, tf = 0, .5,  25
     num_pts =int(1/dT)
     time = np.linspace(t0, tf, num_pts)
     time_elapsed = 0
+    near_zero = .001
 
     def __init__(self, initial_state, goal_state, initial_control, N, Q, R):
 
@@ -32,7 +33,9 @@ class MPC:
         self.controls[:, [0]] = initial_control
         self.prediction_state = []
         self.update_initial(initial_state)
-        self.A = np.array([[1, 0.001, 0.001], [0.001, 1, 0.001], [0.001, 0.001, 1]], dtype=np.float)
+        self.A = np.array([[1, self.near_zero, self.near_zero],
+                           [self.near_zero, 1, self.near_zero],
+                           [1*np.exp(-5), 1*np.exp(-5), 1]], dtype=np.float)
         self.B = np.array([[np.cos(initial_state[self.thetaidx]), 0.1],
                      [np.sin(initial_state[self.thetaidx]), 0],
                      [0, .1]], dtype=np.float)
@@ -69,23 +72,18 @@ class MPC:
             self.state[:, [idx]] = self.state[:, [idx-1]] + dstate
             temp = self.state[:, [idx]]
         self.update_time()
-        self.troubleshoot()
-        return self.state
-
-    def troubleshoot(self):
         print("----------------------------------")
         print("Current initial state and horizon: \n")
         print(self.state[self.xidx, :], "\t", self.state[self.yidx, :])
         print("----------------------------------")
+        current_initial = self.state[:self.num_states - 1, [1]]
+        self.previous_loc = np.concatenate((self.previous_loc, current_initial), axis=1)
+        return self.state
+
+    def troubleshoot(self):
+
         "Plot troubleshoot"
         color = 'red'
-        print("INITIAL")
-        current_initial = self.state[:self.num_states-1, [0]]
-        print(current_initial)
-        print("PREVIOUS")
-        print(self.previous_loc)
-        self.previous_loc = np.concatenate((self.previous_loc, current_initial), axis=1)
-
         plt.plot(self.previous_loc[self.xidx],self.previous_loc[self.yidx], 'bx', label='Path Traveled')
         plt.plot(self.goal[self.xidx], self.goal[self.yidx], 'gx', label='Goal')
         plt.plot(self.state[self.xidx, :], self.state[self.yidx, :], 'r--',
@@ -226,7 +224,8 @@ class Plotter:
 
 if __name__ == '__main__':
 
-
+    # Define tolerance
+    max_tolerance = .5
     # Define gains
     kx = np.sqrt(.4)
     ky = np.sqrt(.2)
@@ -236,7 +235,7 @@ if __name__ == '__main__':
 
     # Choose horizon
     horizon = 5
-    start = np.array([[-8], [-9], [np.pi/3]], dtype=np.float)
+    start = np.array([[-8], [-9], [0]], dtype=np.float)
     goal = np.array([[8], [9], [0]], dtype=np.float)
     start_control = np.array([[.5], [0]], dtype=np.float)
 
@@ -252,12 +251,16 @@ if __name__ == '__main__':
     # Start MPC
 
     dummy = MPC(start, goal, start_control, horizon, Q, R)
-    while dummy.compute_objective_func() > .5 or dummy.get_time_elapsed() < dummy.tf:
+    while dummy.get_time_elapsed() < dummy.tf:
 
         xo = dummy.compute_state()
         print("----UPDATING INITIAL STATE----")
-        print(xo[:, [1]])
-        dummy.update_initial(xo[:, [1]])
-
-
+        new_initial = xo[:, [1]]
+        print(new_initial)
+        dummy.update_initial(new_initial)
+        if LA.norm(new_initial-goal) <= max_tolerance:
+            print("---REACHED MAX TOLERANCE---")
+            print(max_tolerance)
+            break
+    dummy.troubleshoot()
 
