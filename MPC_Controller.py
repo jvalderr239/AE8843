@@ -6,6 +6,9 @@ from matplotlib import animation
 
 from BicycleModel import BicycleModel
 
+#TODO: double check system and control matrix continuous to discrete
+#TODO: propagate(self.vehicle.state) check this
+#TODO: verify we can use LQR form to minimize step 2.
 class MPC:
 
     # State indices
@@ -24,18 +27,25 @@ class MPC:
 
 
     def __init__(self, vehicle, N):
+        """
 
+        predicted_state = phi
+        measurement_state = y or y hat?
+        """
         self.horizon = N
         self.vehicle = vehicle
         self.num_states = vehicle.state.size
         self.num_controls = vehicle.B.shape[1]
         self.predicted_state = np.zeros((self.num_states, self.horizon+1))
+        self.y_state = np.zeros((self.num_states, self.horizon+1))
+        self.yhat_state = np.zeros((self.num_states, self.horizon+1))
         self.controls = np.zeros((self.num_controls, 1))
         self.Q = np.array([[self.qx, 0, 0],
                   [0, self.qy, 0],
                   [0, 0, self.qtheta]], dtype=np.float)
         self.R = np.array([[self.qv, 0],
                            [0, self.qomega]], dtype=np.float)
+        self.K = np.array([[0, 0, 0], [0, 0, 0],[0, 0, 0]])
         self.time_elapsed = 0
         # Initialize animation
         self.plot = Plotter(self.vehicle.state[self.xidx],
@@ -56,10 +66,12 @@ class MPC:
         :return: Null
         """
 
+        self.y_state[:, [0]] = self.vehicle.state + np.random.normal(0,1,3)
         self.predicted_state[:, [0]] = self.vehicle.state
+
         u = []
         for idx in range(1, self.horizon+1):
-            dstate, control = self.propagate(self.vehicle.state)
+            dstate, control = self.propagate(self.predicted_state[:, [idx]])
             print(dstate)
             self.predicted_state[:, [idx]] = self.predicted_state[:, [idx-1]] + dstate
             u.append(control)
@@ -90,15 +102,15 @@ class MPC:
         plt.grid(axis='both', color='0.95')
         plt.show()
 
-    def propagate(self, vector):
+    def propagate(self, phi_state, y_state, yhat_state):
         """
 
         :param vector: the current deviation of the goal state
         :param idx: the current horizon at which the dynamics are estimated
         :return: the next state of the system and an update to control matrix
         """
-        deviation_from_goal = vector.T[0]-self.vehicle.goal.T[0]
-        theta = vector[-1]
+        deviation_from_goal = yhat_state.T[0]-self.vehicle.goal.T[0]
+        theta = phi_state[-1]
 
         b = self.vehicle.control_matrix(theta)
         A = self.vehicle.system_matrix()
