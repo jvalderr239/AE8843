@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class BicycleModel(object):
     """
     Class representing the state of a vehicle
@@ -9,8 +10,8 @@ class BicycleModel(object):
     xidx, yidx, thetaidx = 0, 1, 2
     # control max vals
     wheel_base = .7
-    near_zero = .00001
-    def __init__(self, initial_state, goal, v_max = 3, omega_max=5):
+    near_zero = 1e-05
+    def __init__(self, initial_state, goal, v_max=3, omega_max=5):
 
         self.state_history = [initial_state]
         self.control_history = []
@@ -49,12 +50,14 @@ class BicycleModel(object):
         self._goal = destination
 
     def system_matrix(self):
+
         return np.array([[1, self.near_zero, self.near_zero],
-                           [self.near_zero, 1, self.near_zero],
-                           [self.near_zero, self.near_zero, 1]], dtype=np.float)
+                        [self.near_zero, 1, self.near_zero],
+                        [self.near_zero, self.near_zero, 1]], dtype=np.float)
+
     @staticmethod
     def control_matrix(theta):
         return np.array([[np.cos(theta), 0],
-                           [np.sin(theta), 0],
-                           [0, 1]], dtype=np.float)
+                         [np.sin(theta), 0],
+                        [0, 1]], dtype=np.float)
 
