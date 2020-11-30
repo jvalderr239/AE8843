@@ -5,6 +5,11 @@ import numpy as np
 from matplotlib import animation
 from scipy import integrate
 from scipy import linalg as LA
+from gekko import GEKKO
+
+from scipy.integrate import odeint
+from scipy.optimize import minimize
+import time
 
 # generate seed for random generator
 random.seed(239)
@@ -23,9 +28,11 @@ class RLdMPC:
     qv = 1
     qomega = 1
     # Define time
-    t0, dT, tf = 0, .5,  100
-    num_pts = int(1/dT)
+    t0, tf = 0, 50
+    num_pts = 101
     time = np.linspace(t0, tf, num_pts)
+    dT = time[1]-time[0]
+    tau = 3
     time_elapsed = 0
     mean, sq_sigma = 0, 1
 
@@ -35,7 +42,7 @@ class RLdMPC:
         self.vehicle = vehicle
         self.num_states = vehicle.state.size
         self.num_controls = vehicle.B.shape[1]
-        self.y = np.zeros((self.num_states, self.horizon+1))
+        self.y = np.zeros((self.num_states, self.horizon + 1))
         self.controls = np.zeros((self.num_controls, 1))
         self.R = np.array([[self.qv, 0],
                            [0, self.qomega]], dtype=np.float)
@@ -46,13 +53,27 @@ class RLdMPC:
         self.CCov = 1000*np.eye(self.num_states)
         self.G = 0
         self.time_elapsed = 0
+
+        self.params = [self.C_est]
+        self.u = []
+        self.dev_state = []
+        self.uncertainty = [self.CCov]
+        self.y[:, [0]] = np.matmul(self.C, self.vehicle.state)\
+                         + self.noise
+
         # Initialize animation
         self.plot = Plotter(self.vehicle.state[self.xidx],
                             self.vehicle.state[self.yidx],
                             self.dT)
 
+    def objective(self, y, u, x, P):
+
+        return y.T.dot(y) \
+               + self.quadratic_cost(u,self.R) \
+               + self.quadratic_cost(x, P)
+
     def update_time(self):
-        self.time_elapsed += self.dT
+        self.time_elapsed += 1
 
     def get_time_elapsed(self):
         return self.time_elapsed
@@ -62,39 +83,33 @@ class RLdMPC:
         This method propagates the state of the system by the horizon
         :return: Null
         """
+
+        Rt = np.linalg.inv(self.CCov)
         u = []
         dev_state = []
-        predictors = []
-        uncertainty = []
-
-        self.y[:, [0]] = np.matmul(self.C, self.vehicle.state) + self.noise
-        Rt = np.linalg.inv(self.CCov)
-        param_uncertainty = np.linalg.inv(Rt)
-        uncertainty.append(param_uncertainty)
+        P = 0
         for idx in range(1, self.horizon+1):
+            dstate, control, P = self.opt(
+                self.y[:, [idx - 1]],
+                self.C_est,
+                P,
+                np.linalg.inv(Rt)
+            )
 
-            # Step 2 of RLdMPC
-            dstate, control = self.propagate(self.y[:, [idx-1]],
-                                             uncertainty[idx-1])
+            phi = np.matmul(self.vehicle.system_matrix(),
+                            self.vehicle.state) \
+                  + np.matmul(self.vehicle.control_matrix(
+                self.vehicle.state[self.thetaidx]
+            ),
+                              control)
+            Rt = Rt + phi.dot(phi.T)
 
-            phi = np.matmul(
-                self.vehicle.system_matrix(), self.y[:, [idx - 1]]) + dstate
-            yhat = np.matmul(self.C_est, phi)
-            # RLS method for 3rd order
-            print(yhat)
-            #Rt += np.matmul(phi, phi.T)
-            param_uncertainty = np.linalg.inv(Rt)
-
-            if not np.allclose(param_uncertainty, param_uncertainty.T, rtol=1e-05, atol=1e-08):
-                print('Whoops')
-
-            self.y[:, [idx]] = yhat  # converted from dev state
-
-            # Store values
+            self.y[:, [idx]] = \
+                np.matmul(self.vehicle.system_matrix(),
+                          self.y[:, [idx - 1]]) \
+                + dstate
             u.append(control)
-            dev_state.append(phi)
-            predictors.append(yhat)
-            uncertainty.append(param_uncertainty)
+            dev_state.append(dstate)
 
         print("----------------------------------")
         print("Current initial state and horizon: \n")
@@ -102,11 +117,12 @@ class RLdMPC:
         print("----------------------------------")
         # Step 3 of RLdMPC
 
-        new_phi = dev_state[0]
-        new_output = np.matmul(self.C, new_phi)
-        new_output_est = predictors[0]
-        new_deviation = np.subtract(new_output, new_output_est)
-        self.vehicle.update(new_phi, u[0])
+        new_dev = self.vehicle.state + dev_state[0]
+        self.vehicle.update(new_dev, u[0])
+        new_phi = self.vehicle.state
+        new_output = np.matmul(self.C, self.vehicle.state)
+        new_deviation = np.subtract(new_output,
+                                    np.matmul(self.C_est, new_phi))
         G = np.matmul(np.matmul(self.CCov, new_phi),
                       np.linalg.inv(
                           self.sq_sigma +
@@ -114,8 +130,66 @@ class RLdMPC:
 
         self.CCov -= np.matmul(np.matmul(G, new_phi.T), self.CCov)
         self.C_est += np.matmul(G, new_deviation.T)
+
+        self.uncertainty.append(self.CCov)
+        self.u.append(u[1])
+        self.dev_state.append(dev_state[1])
+
         self.update_time()
-        return self.predicted_state
+        return self.y
+
+    def check_obsv(self, A, theta):
+
+        pass
+
+    def opt(self, vector, C,  P, Q):
+        """
+        :param vector: the current deviation of the goal state
+        :param idx: the current horizon at which the dynamics are estimated
+        :return: the next state of the system and an update to control matrix
+        """
+        # add noise to the output
+        initial_dev = np.subtract(vector, self.vehicle.goal)
+        theta = vector[self.thetaidx]
+
+        deviation_from_goal = initial_dev.T[0]
+        b = self.vehicle.control_matrix(theta)
+        A = self.vehicle.system_matrix()
+        print('-------Q-------')
+        print(Q)
+        print('---------------')
+        try:
+            Pt = LA.solve_continuous_are(A, b, Q, self.R)
+        except ValueError:
+            print('Using previous P')
+            Pt = P
+
+        K = np.matmul(np.linalg.inv(self.R), (np.dot(b.T, P)))
+        eigVals, eigVecs = LA.eig(A-np.matmul(b, K))
+
+        # Project the solver
+        # Drive deviation to zero by solving xdot = (A-BK)x
+        # Output the noisy signal
+        sol = integrate.solve_ivp(
+            fun=self.output_func,
+            t_span=[self.get_time_elapsed(), self.tf],
+            y0=deviation_from_goal,
+            args=(A, b, K, C),
+            method='RK45',
+            t_eval=[self.get_time_elapsed(), self.tf]
+            )
+        # Optimal Trajectory and Control which are used for the Certainty Equivalence strategy
+        optimal_trajectory = sol.y
+        optimal_control = np.matmul(-K, optimal_trajectory)
+
+        # Only take the first action and limit the entries
+        v_clipped = np.clip(optimal_control[0, [0]], self.vehicle.v_min, self.vehicle.v_max)
+        omega_clipped = np.clip(optimal_control[1, [0]], self.vehicle.omega_min, self.vehicle.omega_max)
+
+        # Apply control to current state
+        control = np.array([v_clipped, omega_clipped], dtype=float)
+        du = self.dT * np.matmul(b, control)
+        return du, control, Pt
 
     def propagate(self, vector, Q):
         """
@@ -141,9 +215,9 @@ class RLdMPC:
 
         # Project the solver
         span = np.linspace(
-            self.t0,
+            self.get_time_elapsed(),
             self.tf,
-            self.num_pts
+            self.num_pts+1
         )
         # Drive deviation to zero by solving xdot = (A-BK)x
         # Output the noisy signal
@@ -171,6 +245,7 @@ class RLdMPC:
     def compute_constraints(self):
         pass
 
+
     def sys_func(self, t, x, a, b, k):
         """
         :param t: Current time at which the dynamics are evaluated
@@ -183,8 +258,36 @@ class RLdMPC:
         """
         return np.matmul(a - b.dot(k), x.reshape(self.num_states, 1)).T
 
+    def output_func(self, t, x, a, b, k, C):
+        """
+        :param t: Current time at which the dynamics are evaluated
+        :param x: Current state of the system
+        :param a: the system matrix
+        :param b: the control matrix
+        :param k: the gain matrix
+        :param param_est: output matrix
+        :return: output estimation for each time, t, evaluated with sys dynamics
+        """
+
+        xx = np.matmul(a - b.dot(k), x.reshape(self.num_states, 1))
+
+        return np.matmul(C, xx).T
+
     @staticmethod
     def quadratic_cost(x, Q): return np.matmul(np.matmul(x.T, Q), x)
+
+    def process_model(self, y, t, u, K, tau):
+        # arguments
+        #  y   = outputs
+        #  t   = time
+        #  u   = input value
+        #  K   = process gain
+        #  tau = process time constant
+
+        # calculate derivative
+        dydt = (-y + K * u) / (tau)
+
+        return dydt
 
     def troubleshoot(self):
 
@@ -195,7 +298,7 @@ class RLdMPC:
 
         plt.plot(x_history,y_history, 'bx', label='Path Traveled')
         plt.plot(self.vehicle.goal[self.xidx], self.vehicle.goal[self.yidx], 'gx', label='Goal')
-        plt.plot(self.predicted_state[self.xidx, :], self.predicted_state[self.yidx, :], 'r--',
+        plt.plot(self.y[self.xidx, :], self.y[self.yidx, :], 'r--',
                  color=color, label='Predicted Trajectory')
         plt.legend()
         plt.xlim([-20, 20])
