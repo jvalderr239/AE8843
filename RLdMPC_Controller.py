@@ -5,11 +5,7 @@ import numpy as np
 from matplotlib import animation
 from scipy import integrate
 from scipy import linalg as LA
-from gekko import GEKKO
-
-from scipy.integrate import odeint
-from scipy.optimize import minimize
-import time
+from scipy.optimize import minimize as min
 
 # generate seed for random generator
 random.seed(239)
@@ -22,19 +18,19 @@ class RLdMPC:
     xmax, ymax, thetamax = 20, 20, np.pi/2
 
     # Define parameter weights
-    qx = np.sqrt(.4)
-    qy = np.sqrt(.2)
-    qtheta = np.sqrt(np.pi/10)
-    qv = 1
-    qomega = 1
+    qx = 1
+    qy = 1
+    qtheta = np.sqrt(np.pi / 100)
+    qv = np.sqrt(1)
+    qomega = np.sqrt(100)
     # Define time
-    t0, tf = 0, 50
-    num_pts = 101
-    time = np.linspace(t0, tf, num_pts)
+    t0, tf = 0, 100
+    num_pts = 100
+    time = np.linspace(t0, tf, num_pts+1)
     dT = time[1]-time[0]
-    tau = 3
     time_elapsed = 0
     mean, sq_sigma = 0, 1
+    yhat_idx, u_idx, phi_idx, z_idx, r_idx = 0, 1, 2, 3, 4
 
     def __init__(self, vehicle, C, N):
 
@@ -42,8 +38,6 @@ class RLdMPC:
         self.vehicle = vehicle
         self.num_states = vehicle.state.size
         self.num_controls = vehicle.B.shape[1]
-        self.y = np.zeros((self.num_states, self.horizon + 1))
-        self.controls = np.zeros((self.num_controls, 1))
         self.R = np.array([[self.qv, 0],
                            [0, self.qomega]], dtype=np.float)
         self.noise = np.random.normal(
@@ -53,24 +47,28 @@ class RLdMPC:
         self.CCov = 1000*np.eye(self.num_states)
         self.G = 0
         self.time_elapsed = 0
-
+        self.y = [np.matmul(self.C, self.vehicle.state) + self.noise]
+        self.phi = [self.vehicle.state]
+        self.P = [self.CCov]
         self.params = [self.C_est]
-        self.u = []
-        self.dev_state = []
-        self.uncertainty = [self.CCov]
-        self.y[:, [0]] = np.matmul(self.C, self.vehicle.state)\
-                         + self.noise
+        self.controls = [np.zeros((self.num_controls, 1))]
+        self.Kstar = np.zeros((self.num_states, self.num_states))
 
         # Initialize animation
         self.plot = Plotter(self.vehicle.state[self.xidx],
                             self.vehicle.state[self.yidx],
                             self.dT)
+        self.U0 = np.zeros((self.num_controls, self.horizon+1))
 
-    def objective(self, y, u, x, P):
+        # Define constraints
+        self.cons = [
+            {'type': 'eq',
+             'fun':
+                 lambda state: np.matmul(state[self.r_idx], state[self.z_idx]) - state[self.phi_idx]},  # equality constraint
+            {'type': 'ineq',
+             'fun': lambda state: np.matmul(state[self.phi_idx].T, state[self.z_idx])}  # inequality constraint
+         ]
 
-        return y.T.dot(y) \
-               + self.quadratic_cost(u,self.R) \
-               + self.quadratic_cost(x, P)
 
     def update_time(self):
         self.time_elapsed += 1
@@ -78,65 +76,191 @@ class RLdMPC:
     def get_time_elapsed(self):
         return self.time_elapsed
 
+    def make_vector(self, item):
+        """
+
+        :param item: item to repeat
+        :return: return list of repeated items
+        """
+        return np.array([item]*self.horizon)
+
     def compute_state(self):
         """
         This method propagates the state of the system by the horizon
         :return: Null
         """
+        # Initialization
+        phitk = self.vehicle.state
+        ytk = np.zeros((self.num_states, 1))
+        Rtk = np.zeros((self.num_states*self.num_states, 1))
+        ztk = np.zeros((self.num_states, 1))
+        ut = np.zeros((self.num_controls, 1))
 
-        Rt = np.linalg.inv(self.CCov)
-        u = []
-        dev_state = []
-        P = 0
-        for idx in range(1, self.horizon+1):
-            dstate, control, P = self.opt(
-                self.y[:, [idx - 1]],
-                self.C_est,
-                P,
-                np.linalg.inv(Rt)
-            )
+        state = np.concatenate((ytk, ut, phitk, ztk, Rtk), axis=0)
 
-            phi = np.matmul(self.vehicle.system_matrix(),
-                            self.vehicle.state) \
-                  + np.matmul(self.vehicle.control_matrix(
+        # Step 1
+        for t in range(0, self.num_pts):
+            A = self.vehicle.system_matrix()
+            b = self.vehicle.control_matrix(
                 self.vehicle.state[self.thetaidx]
-            ),
-                              control)
-            Rt = Rt + phi.dot(phi.T)
+            )
+            try:
+                self.Kstar = LA.solve_continuous_are(A, b, self.CCov, self.R)
+            except ValueError or np.linalg.LinAlgError:
+                print('Using previous P')
 
-            self.y[:, [idx]] = \
-                np.matmul(self.vehicle.system_matrix(),
-                          self.y[:, [idx - 1]]) \
-                + dstate
-            u.append(control)
-            dev_state.append(dstate)
+            for idx in range(0, self.horizon-1):
 
-        print("----------------------------------")
-        print("Current initial state and horizon: \n")
-        print(self.y[self.xidx, :], "\n", self.y[self.yidx, :])
-        print("----------------------------------")
-        # Step 3 of RLdMPC
+                if idx > 0:
+                    control = self.propagate(
+                        state[self.phi_idx, [idx - 1]],
+                        A, b,
+                        state[self.r_idx, [idx]],
+                        self.Kstar
+                    )
+                    # update per horizon
+                    # phi
+                    phitk = np.matmul(
+                        A,
+                        phitk
+                    ) + np.matmul(self.vehicle.control_matrix(
+                        phitk[self.thetaidx]
+                    ), control
+                    )
+                    # u
+                    utk = control
+                    # y
+                    ytk = np.matmul(self.C_est, phitk)
+                    # R
+                    rtk += np.matmul(phitk.T, phitk).flatten()
+                    ztk = np.matmul(rtk, phitk)
+                else:
+                    phitk = np.matmul(A, self.vehicle.state)
 
-        new_dev = self.vehicle.state + dev_state[0]
-        self.vehicle.update(new_dev, u[0])
-        new_phi = self.vehicle.state
-        new_output = np.matmul(self.C, self.vehicle.state)
-        new_deviation = np.subtract(new_output,
-                                    np.matmul(self.C_est, new_phi))
-        G = np.matmul(np.matmul(self.CCov, new_phi),
-                      np.linalg.inv(
-                          self.sq_sigma +
-                          self.quadratic_cost(new_phi, self.CCov)))
+                    ytk = self.y[t]
+                    rtk = np.linalg.inv(self.P[t]).flatten()
+                    ztk = np.matmul(self.P[t], phitk)
+                    utk = self.controls[t]
+                    new_state = np.concatenate((ytk, ut, phitk, ztk, Rtk), axis=0)
+                    state = np.concatenate(state, new_state, axis=1)
+            optimal_solution = min(self.objective,
+                                   state,
+                                   constraints=self.cons,
+                                   bounds=
+                                   [
+                                       (-10, 10),  # y bounds
+                                       (self.vehicle.get_min(),
+                                        self.vehicle.get_max()),  # u bounds
+                                       (None, None),
+                                       (None, None),
+                                       (None, None)
+                                   ],
+                                   method='SLSQP',
+                                   args=(self.R,
+                                         self.Kstar,
+                                         self.horizon))
+            print(optimal_solution)
+            optimal_control = optimal_solution.x
 
-        self.CCov -= np.matmul(np.matmul(G, new_phi.T), self.CCov)
-        self.C_est += np.matmul(G, new_deviation.T)
 
-        self.uncertainty.append(self.CCov)
-        self.u.append(u[1])
-        self.dev_state.append(dev_state[1])
 
-        self.update_time()
-        return self.y
+            print("----------------------------------")
+            print("Current initial state and horizon: \n")
+            print(self.y[self.xidx, :], "\n", self.y[self.yidx, :])
+            print("----------------------------------")
+            # Step 3 of RLdMPC
+
+            new_dev = np.matmul(
+                    self.vehicle.system_matrix(),
+                    self.vehicle.state
+                ) + np.matmul(self.vehicle.control_matrix(
+                        self.vehicle.state[self.thetaidx]
+                    ), optimal_control[:, [0]]
+                )
+            self.vehicle.update(new_dev, optimal_control[:, [0]])
+            new_phi = self.vehicle.state
+            new_output = np.matmul(self.C, self.vehicle.state)
+
+            new_deviation = np.subtract(new_output,
+                                        np.matmul(self.C_est, new_phi))
+            G = np.matmul(np.matmul(self.CCov, new_phi),
+                          np.linalg.inv(
+                              self.sq_sigma +
+                              self.quadratic_cost(new_phi, self.CCov)))
+
+            self.CCov -= np.matmul(np.matmul(G, new_phi.T), self.CCov)
+            self.C_est += np.matmul(G, new_deviation.T)
+            # Store new values
+            self.controls.append(optimal_control[:, [0]])
+            self.phi.append(new_phi)
+            self.y.append(new_output)
+            self.P.append(self.CCov)
+            self.params.append(self.C_est)
+            self.update_time()
+
+    def objective(self, state, R, Kstar, N):
+
+        y = state[self.yhat_idx, [0]][0:N-1]
+        phi = state[self.phi_idx, [0]][0:N-1]
+        u = state[self.u_idx, [0]][0:N-1]
+        z = state[self.z_idx, [0]][0:N-1]
+
+        phi_final = state[self.phi_idx, [0]][N]
+        y_squared = y.T.dot(y)
+        u_squared = self.quadratic_cost(u, R)
+        phiz = np.matmul(phi.T, z)
+        terminal = self.quadratic_cost(phi_final, Kstar)
+
+        return y_squared + u_squared + phiz + terminal
+
+
+    """def objective(self, state,A,B,R,P,N):
+
+        x0 = state[self.phi_idx]
+        y0 = state[self.yhat_idx]
+        Q = state[self.r_idx]
+        sx = np.eye(A.ndim)
+        su = np.zeros((A.ndim, B.shape[1] * N))
+
+        # calc sx,su
+        for i in range(N):
+            # generate sx
+            An = np.linalg.matrix_power(A, i + 1)
+            sx = np.r_[sx, An]
+
+            # generate su
+            tmp = None
+            for ii in range(i + 1):
+                tm = np.linalg.matrix_power(A, ii) * B
+                if tmp is None:
+                    tmp = tm
+                else:
+                    tmp = np.c_[tm, tmp]
+
+            for ii in np.arange(i, N - 1):
+                tm = np.zeros(B.shape)
+                if tmp is None:
+                    tmp = tm
+                else:
+                    tmp = np.c_[tmp, tm]
+
+            su = np.r_[su, tmp]
+
+        tm1 = np.eye(N + 1)
+        tm1[N, N] = 0
+        tm2 = np.zeros((N + 1, N + 1))
+        tm2[N, N] = 1
+        Qbar = np.kron(tm1, Q) + np.kron(tm2, P)
+        Rbar = np.kron(np.eye(N), R)
+
+        uopt = -(su.T * Qbar * su + Rbar).I * su.T * Qbar * sx * x0
+        #  print(uBa)
+        costx = x0.T * (sx.T * Qbar * sx - sx.T * Qbar * su * (su.T * Qbar * su + Rbar).I * su.T * Qbar * sx) * x0
+        costy = 
+
+        #  print(costBa)
+
+        return uopt, costBa"""
 
     def check_obsv(self, A, theta):
 
@@ -172,16 +296,18 @@ class RLdMPC:
         # Output the noisy signal
         sol = integrate.solve_ivp(
             fun=self.output_func,
-            t_span=[self.get_time_elapsed(), self.tf],
+            t_span=[self.get_time_elapsed(),
+                    self.tf],
             y0=deviation_from_goal,
             args=(A, b, K, C),
             method='RK45',
-            t_eval=[self.get_time_elapsed(), self.tf]
+            t_eval=[self.get_time_elapsed(),
+                    self.tf],
             )
         # Optimal Trajectory and Control which are used for the Certainty Equivalence strategy
         optimal_trajectory = sol.y
         optimal_control = np.matmul(-K, optimal_trajectory)
-
+        print(optimal_control)
         # Only take the first action and limit the entries
         v_clipped = np.clip(optimal_control[0, [0]], self.vehicle.v_min, self.vehicle.v_max)
         omega_clipped = np.clip(optimal_control[1, [0]], self.vehicle.omega_min, self.vehicle.omega_max)
@@ -191,33 +317,26 @@ class RLdMPC:
         du = self.dT * np.matmul(b, control)
         return du, control, Pt
 
-    def propagate(self, vector, Q):
+    def propagate(self, vector, A, b, Q, Kstar):
         """
         :param vector: the current deviation of the goal state
         :param idx: the current horizon at which the dynamics are estimated
         :return: the next state of the system and an update to control matrix
         """
         # add noise to the output
-        print(self.C_est, vector)
-        y = np.matmul(self.C_est, vector)
-        initial_dev = np.subtract(y, self.vehicle.goal)
+        initial_dev = np.subtract(vector, self.vehicle.goal)
         theta = vector[self.thetaidx]
 
         deviation_from_goal = initial_dev.T[0]
         b = self.vehicle.control_matrix(theta)
         A = self.vehicle.system_matrix()
-        print('-------Q-------')
-        print(Q)
-        print('---------------')
-        P = LA.solve_continuous_are(A, b, Q, self.R)
-        K = np.matmul(np.linalg.inv(self.R), (np.dot(b.T, P)))
-        eigVals, eigVecs = LA.eig(A-np.matmul(b, K))
+        K = np.matmul(np.linalg.inv(self.R), (np.dot(b.T, Kstar)))
 
         # Project the solver
         span = np.linspace(
             self.get_time_elapsed(),
             self.tf,
-            self.num_pts+1
+            self.tf - self.get_time_elapsed()
         )
         # Drive deviation to zero by solving xdot = (A-BK)x
         # Output the noisy signal
@@ -239,11 +358,7 @@ class RLdMPC:
 
         # Apply control to current state
         control = np.array([v_clipped, omega_clipped], dtype=float)
-        du = self.dT * np.matmul(b, control)
-        return du, control
-
-    def compute_constraints(self):
-        pass
+        return control
 
 
     def sys_func(self, t, x, a, b, k):
