@@ -7,7 +7,7 @@ variance = 0.0000001;
 init_state = [-8;
               -9;
               0];
-          
+y_hat_nl = init_state;         
 y_hat = init_state(3);
 
 goal_state = [8;
@@ -69,7 +69,7 @@ for i = 2:length(time_series)
     %         x = fmincon(@(ustar)y_hat*y_hat + r*ustar*ustar + xt'*P_mat*xt,[0],[],[],[],[],[-1],[1]);
     x = fmincon(min_func,[0;0],[],[],[],[],[-1;-1],[1;1]);
     %%
-    ustar(:,i-1) = -x;
+    ustar(:,i-1) = x;
 %     if (i > 3) && (sign(xstar(2,i-2)) ~= sign(xstar(2,i-1)))
 %         ustar(i-1) = 0;
 %     end
@@ -78,8 +78,8 @@ for i = 2:length(time_series)
                    sin(theta), 0;
                    0,          1]; % B Mat
 
-    y_hat = xt+(sys_mat * xt + control_mat * ustar(:,i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
-    y_hat = y_hat(3);
+    y_hat_nl = y_hat_nl+(sys_mat * y_hat_nl + control_mat * ustar(:,i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
+    y_hat = y_hat_nl(3);
     xstar(:,i) = xt+(A*xt+B*ustar(:,i-1))*dt;   %Linearized Model Update
     xt = xstar(:,i);
     % After finding min and propagating, recalculate G, theta_hat, and
