@@ -30,8 +30,8 @@ A = sys_mat;
 %                sin(theta), 0;
 %                0,          1]; % B Mat
 
-Tf = 5; % seconds
-dt = 0.05;
+Tf = 1; % seconds
+dt = 0.01;
 time_series = 0:dt:Tf;
 
 
@@ -40,7 +40,7 @@ r = 0.5;
 alpha = 0.25;
 theta_hat = [0;0;0];
 horizon = 3; % N = 3   
-P_mat = 10^3*eye(3);
+P_mat = eye(3);
 
 xstar(:,1) = init_state;
 ustar(:,1) = init_cntrl;
@@ -67,7 +67,7 @@ for i = 2:length(time_series)
                 (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'*((P_mat + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)'+(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'))^-1*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt))));
 
     %         x = fmincon(@(ustar)y_hat*y_hat + r*ustar*ustar + xt'*P_mat*xt,[0],[],[],[],[],[-1],[1]);
-    x = fmincon(min_func,[0;0],[],[],[],[],[-1;-1],[1;1]);
+    x = fmincon(min_func,[0.5;-0.5],[],[],[],[],[-1;-1],[1;1]);
     %%
     ustar(:,i-1) = x;
 %     if (i > 3) && (sign(xstar(2,i-2)) ~= sign(xstar(2,i-1)))
