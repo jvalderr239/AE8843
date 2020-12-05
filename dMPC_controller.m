@@ -7,7 +7,7 @@ variance = 0.0000001;
 init_state = [-8;
               -9;
               0];
-y_hat_nl = init_state;         
+y_hat_nl(:,1) = init_state;         
 y_hat = init_state(3);
 
 goal_state = [8;
@@ -78,7 +78,7 @@ for i = 2:length(time_series)
                    sin(theta), 0;
                    0,          1]; % B Mat
 
-    y_hat_nl = y_hat_nl+(sys_mat * y_hat_nl + control_mat * ustar(:,i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
+    y_hat_nl(:,i) = y_hat_nl(:,i-1)+(sys_mat * y_hat_nl(:,i-1) + control_mat * ustar(:,i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
     y_hat = y_hat_nl(3);
     xstar(:,i) = xt+(A*xt+B*ustar(:,i-1))*dt;   %Linearized Model Update
     xt = xstar(:,i);
@@ -91,7 +91,9 @@ end
 
 figure
 hold on
-plot(xstar(2,:),xstar(2,:))
+plot(xstar(1,:),xstar(2,:))
+plot(y_hat_nl(1,:),y_hat_nl(2,:),'r')
+legend('Linearized','Nonlinear Observation')
 title('x-y plot')
 
 figure
@@ -103,7 +105,6 @@ figure
 hold on
 plot(time_series(2:end),ustar(2,:))
 title('w control plot')
-
 
 
 
