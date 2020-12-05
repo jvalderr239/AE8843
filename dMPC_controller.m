@@ -38,7 +38,7 @@ time_series = 0:dt:Tf;
 % dMPC
 r = 0.5;
 alpha = 0.25;
-theta_hat = zeros(3);
+theta_hat = [0;0;0];
 horizon = 3; % N = 3   
 P_mat = 10^3*eye(3);
 
@@ -57,15 +57,19 @@ for i = 2:length(time_series)
     %% Minimize: y_hakt^2 + r*ustar^2 + xt'*P_mat*xt... to get ustar 
     %% Need to update with Unicycle expansion and both control inputs
 
+%     min_func = @(ustar_min)(-(y_hat'*y_hat + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + xt'*P_mat*xt + ...
+%                 alpha*(theta_hat'*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)'*(P_mat + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)')^-1*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)) + ...
+%                 (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'*((P_mat + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)'+(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'))^-1*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)) + ...
+%                   (alpha*alpha*alpha)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)'*(k_star)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)));
+
     min_func = @(ustar_min)(-(y_hat'*y_hat + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + xt'*P_mat*xt + ...
-                alpha*(theta_hat'*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)'*(P_mat + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)')^-1*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)) + ...
-                (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'*((P_mat + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)'+(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'))^-1*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)) + ...
-                (alpha*alpha*alpha)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)'*(k_star)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)));
+                alpha*(theta_hat'*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)'*(P_mat + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)')^-1*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)) + ...
+                (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'*((P_mat + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)'+(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'))^-1*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt))));
 
     %         x = fmincon(@(ustar)y_hat*y_hat + r*ustar*ustar + xt'*P_mat*xt,[0],[],[],[],[],[-1],[1]);
     x = fmincon(min_func,[0;0],[],[],[],[],[-1;-1],[1;1]);
     %%
-    ustar(i-1) = -x;
+    ustar(:,i-1) = -x;
 %     if (i > 3) && (sign(xstar(2,i-2)) ~= sign(xstar(2,i-1)))
 %         ustar(i-1) = 0;
 %     end
@@ -74,9 +78,9 @@ for i = 2:length(time_series)
                    sin(theta), 0;
                    0,          1]; % B Mat
 
-    y_hat = xt+(sys_mat * xt + control_mat * ustar(i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
+    y_hat = xt+(sys_mat * xt + control_mat * ustar(:,i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
 %     y_hat = y_hat(1);
-    xstar(:,i) = xt+(A*xt+B.*ustar(i-1))*dt;   %Linearized Model Update
+    xstar(:,i) = xt+(A*xt+B*ustar(:,i-1))*dt;   %Linearized Model Update
     xt = xstar(:,i);
     % After finding min and propagating, recalculate G, theta_hat, and
     % P
