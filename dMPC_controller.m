@@ -2,13 +2,13 @@
 clc;clear;close all;
 
 % Initial State [x;y;theta]
-variance = 0;
+variance = 0.0000001;
 
 init_state = [-8;
               -9;
               0];
           
-y_hat = init_state;
+y_hat = init_state(3);
 
 goal_state = [8;
               9;
@@ -31,7 +31,7 @@ A = sys_mat;
 %                0,          1]; % B Mat
 
 Tf = 5; % seconds
-dt = 0.01;
+dt = 0.05;
 time_series = 0:dt:Tf;
 
 
@@ -62,7 +62,7 @@ for i = 2:length(time_series)
 %                 (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'*((P_mat + (xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)'+(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'))^-1*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)) + ...
 %                   (alpha*alpha*alpha)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)'*(k_star)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)));
 
-    min_func = @(ustar_min)(-(y_hat'*y_hat + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + xt'*P_mat*xt + ...
+    min_func = @(ustar_min)((y_hat'*y_hat + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + xt'*P_mat*xt + ...
                 alpha*(theta_hat'*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)'*(P_mat + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)')^-1*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)) + ...
                 (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + r*[ustar_min(1);ustar_min(2)]'*[ustar_min(1);ustar_min(2)] + (xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'*((P_mat + (xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)'+(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt)'))^-1*(xt+(A*(xt+(A*xt+B*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt))));
 
@@ -79,15 +79,33 @@ for i = 2:length(time_series)
                    0,          1]; % B Mat
 
     y_hat = xt+(sys_mat * xt + control_mat * ustar(:,i-1))*dt + (sqrt(variance) * randn()); % Nonlinear Model Update
-%     y_hat = y_hat(1);
+    y_hat = y_hat(3);
     xstar(:,i) = xt+(A*xt+B*ustar(:,i-1))*dt;   %Linearized Model Update
     xt = xstar(:,i);
     % After finding min and propagating, recalculate G, theta_hat, and
     % P
     G = P_mat * xt * (variance + xt'*P_mat*xt)^-1;
     theta_hat = theta_hat + G*(y_hat - theta_hat'*xt);
-    P_mat = (eye(2) - G*xt')*P_mat;
+    P_mat = (eye(3) - G*xt')*P_mat;
 end
+
+figure
+hold on
+plot(xstar(2,:),xstar(2,:))
+title('x-y plot')
+
+figure
+hold on
+plot(time_series(2:end),ustar(1,:))
+title('v control plot')
+
+figure
+hold on
+plot(time_series(2:end),ustar(2,:))
+title('w control plot')
+
+
+
 
 
 
