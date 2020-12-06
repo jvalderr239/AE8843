@@ -8,9 +8,9 @@ variance = 1;
 init_state = [2;
               2;
               0];
-y_hat_nl(:,1) = init_state;         
-y_hat = init_state(3);
-
+% SRR - for the example in the paper, dim(y) = 1. 
+y_hat_nl(:,1) = 10;         
+y_hat = 10;
 goal_state = [0;
               0;
               0];
