@@ -66,7 +66,7 @@ for i = 2:length(time_series)
     % Adding observability check per page 5 , step 1 found in the paper. 
     % Kstar should only be updated if observable. Else, keep previous
     % Kstar.
-    if rank(obsv(A, theta')) == 3 
+    if rank(obsv(A, theta')) == size(init_state, 1) 
         [k_star,~,~] = idare(A,B,theta_hat*theta_hat', r, 0, eye(3));
     end
     %% Minimize: y_hakt^2 + r*ustar^2 + xt'*P_mat*xt... to get ustar 
