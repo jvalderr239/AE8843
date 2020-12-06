@@ -56,6 +56,10 @@ for i = 2:length(time_series)
     v = ut(1);
     %Update - SRR:
     %i believe this is DARE, not CARE. using idare now intead of icare.
+    % source: https://www.mathworks.com/help/control/ref/idare.html
+    % if you look at the link above, it looks exactly like the equation for
+    % Kstar, with E = Identity (3x3)
+    
     [k_star,~,~] = idare(A,B,theta_hat*theta_hat', r, 0, eye(3));
 
     %% Minimize: y_hakt^2 + r*ustar^2 + xt'*P_mat*xt... to get ustar 
