@@ -71,6 +71,11 @@ for i = 2:length(time_series)
     end
     %% Minimize: y_hakt^2 + r*ustar^2 + xt'*P_mat*xt... to get ustar 
     %% Need to update with Unicycle expansion and both control inputs
+    % SRR update - I removed dt's from min_func because A, and B are
+    %               already in discrete time. 
+    %              I took inverse of P, following the R_t+k equation in
+    %             page 5 step 2.
+    
     % SRR concern - paper says transpose(phi)*z >= 0 . How are we enforcing
     % this below? If problems persist, TODO:  Verify this actually holds true 
      
@@ -80,7 +85,7 @@ for i = 2:length(time_series)
 %                   (alpha*alpha*alpha)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)'*(k_star)*(xt+(A*(xt+(A*(xt+(A*xt+B.*[ustar_min(1);ustar_min(2)])*dt)+ B*[ustar_min(1);ustar_min(2)])*dt) + B*[ustar_min(1);ustar_min(2)])*dt)));
 
     min_func = @(ustar_min)((y_hat'*y_hat + r*ustar_min'*ustar_min + xt'*P_mat*xt + ...
-                alpha*(theta_hat'*(A*xt+B*ustar_min) + r*ustar_min'*ustar_min + (A*xt+B*ustar_min)'*(P_mat + (A*xt+B*ustar_min)*(A*xt+B*ustar_min)')^-1*(A*xt+B*ustar_min) + ...
+                alpha*(theta_hat'*(A*xt+B*ustar_min) + r*ustar_min'*ustar_min + (A*xt+B*ustar_min)'*(inv(P_mat) + (A*xt+B*ustar_min)*(A*xt+B*ustar_min)')^-1*(A*xt+B*ustar_min) + ...
                 (alpha*alpha)*(theta_hat'*(xt+(A*(xt+(A*xt+B*ustar_min)*dt)+ B*ustar_min)*dt) + r*ustar_min'*ustar_min + (xt+(A*(xt+(A*xt+B*ustar_min)*dt)+ B*ustar_min)*dt)'*((P_mat + (xt+(A*xt+B*ustar_min)*dt)*(xt+(A*xt+B*ustar_min)*dt)'+(xt+(A*(xt+(A*xt+B*ustar_min)*dt)+ B*ustar_min)*dt)*(xt+(A*(xt+(A*xt+B*ustar_min)*dt)+ B*ustar_min)*dt)'))^-1*(xt+(A*(xt+(A*xt+B*ustar_min)*dt)+ B*ustar_min)*dt)) + ...
                 (alpha*alpha*alpha)*(xt+(A*(xt+(A*(xt+(A*xt+B.*ustar_min)*dt)+ B*ustar_min)*dt) + B*ustar_min)*dt)'*(k_star)*(xt+(A*(xt+(A*(xt+(A*xt+B.*ustar_min)*dt)+ B*ustar_min)*dt) + B*ustar_min)*dt)));  
 
