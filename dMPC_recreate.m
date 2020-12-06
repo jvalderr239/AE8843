@@ -54,7 +54,10 @@ for i = 2:length(time_series)
     ut = ustar(:,i-1); 
     theta = xt(3);
     v = ut(1);
-    [k_star,~,~] = icare(A,B,theta_hat*theta_hat');
+    %Update - SRR:
+    %i believe this is DARE, not CARE. using idare now intead of icare.
+    [k_star,~,~] = idare(A,B,theta_hat*theta_hat', r, 0, eye(3));
+
     %% Minimize: y_hakt^2 + r*ustar^2 + xt'*P_mat*xt... to get ustar 
     %% Need to update with Unicycle expansion and both control inputs
 
