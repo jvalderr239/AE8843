@@ -34,8 +34,9 @@ B = [1;
 Tf = 5; % seconds
 dt = 0.01;
 time_series = 0:dt:Tf;
-
-
+% SRR - Initializing k_star to all zeros, the same way the author does in 
+% page 5, "Initialiation - K_t0 = 0_n" 
+k_star = zeros(3);
 % dMPC
 r = 1;
 alpha = 1;
