@@ -229,10 +229,13 @@ for i = 2:length(time_series)
     % SRR - Skipping R(t+1) constraint.
     
     Aineq = zeros(34);
-    Aineq(6,6) = -xt(1,1);
-    Aineq(7,7) = -xt(2,1);
-    Aineq(8,8) = -xt(3,1);
-    
+    % SRR - adding z(t) inequality constraint, for k = 0
+    %      -Phi(1,1)*z(t, element 1) - Phi(2,1)*z(t, element2) - ... <= 0
+    Aineq(1,11) = -xt(1,1);
+    Aineq(1,12) = -xt(2,1);
+    Aineq(1,13) = -xt(3,1);
+    % SRR - skipping z(t+1) inequality constraint, for k =1 because
+    % nonlinear.
     bineq = zeros(34,1);
     
     lb = ones(34,1)*-inf;
@@ -245,7 +248,7 @@ for i = 2:length(time_series)
     %% quadprog analysis
     %SRR update, make sure you double H matrix by 2, MATLAB will half it.
     linear_uopt = quadprog(2*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
-
+    
     %% Gurobi Definition
 %     model.obj = f_vec;
 %     model.Q = sparse(Hmat);

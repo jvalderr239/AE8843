@@ -164,9 +164,10 @@ for i = 2:length(time_series)
     beq(17) = R_mat(3,3);
     
     Aineq = zeros(17);
+    % Update to Aineq. Should be part of the same row. 
     Aineq(6,6) = -xt(1,1);
-    Aineq(7,7) = -xt(2,1);
-    Aineq(8,8) = -xt(3,1);
+    Aineq(6,7) = -xt(2,1);
+    Aineq(6,8) = -xt(3,1);
     
     bineq = zeros(17,1);
     
