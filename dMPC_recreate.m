@@ -40,7 +40,7 @@ theta_truth = [5;
                2;
                -1];
            
-Tf = 5; % seconds
+Tf = .5; % seconds
 dt = 0.01;
 time_series = 0:dt:Tf;
 % SRR - Initializing k_star to all zeros, the same way the author does in 
@@ -228,6 +228,20 @@ plot(optimal_x(1,:), optimal_x(2,:))
 xlabel('x position')
 ylabel('y position')
 title('x-y plot')
+
+figure
+hold on
+plot(time_series(1:end), optimal_x(2,:))
+xlabel('Time')
+ylabel('y position')
+title('y plot')
+
+figure
+hold on
+plot(time_series(1:end), optimal_x(1,:))
+xlabel('Time')
+ylabel('x position')
+title('x plot')
 
 figure
 hold on
