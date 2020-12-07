@@ -132,6 +132,8 @@ for i = 2:length(time_series)
     Aeq(2, 6) = -theta_hat(2,1);
     Aeq(2, 7) = -theta_hat(3,1);
     
+    % SRR - Constraint for Phi_(t+1). This is for k = 0.
+    %       Phi(t+1) - B*u(t)= A*Phi(t)
     Aeq(3,2) = -B(1,1);
     Aeq(3,3) = 1;
     
@@ -140,6 +142,9 @@ for i = 2:length(time_series)
     
     Aeq(5,2) = -B(3,1);
     Aeq(5,5) = 1;
+    
+    
+    % SRR - Adding constraint for Phi_(t+1).
     
     Aeq(6,6) = R_mat(1,1);
     Aeq(6,7) = R_mat(1,2);
@@ -172,6 +177,7 @@ for i = 2:length(time_series)
     beq(3) = A(1,1)*xt(1,1)+A(1,2)*xt(2,1)+A(1,3)*xt(3,1);
     beq(4) = A(2,1)*xt(1,1)+A(2,2)*xt(2,1)+A(2,3)*xt(3,1);
     beq(5) = A(3,1)*xt(1,1)+A(3,2)*xt(2,1)+A(3,3)*xt(3,1);
+    
     beq(6) = xt(1);
     beq(7) = xt(2);
     beq(8) = xt(3);
