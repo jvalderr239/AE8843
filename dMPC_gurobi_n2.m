@@ -250,19 +250,160 @@ for i = 2:length(time_series)
 %     linear_uopt = quadprog(2*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
     
     %% Gurobi Definition
+    % Trying to minimize xT*Q*x + qT*x 
     model.obj = f_vec; % linear matrix in minimize problem statement
     model.Q = sparse(Hmat);  % quadratic matrix in minimize problem statement
     model.A = sparse([Aeq;Aineq]); % LHS of linear constraints
     model.rhs = [beq;bineq]; % RHS of linear constraints
     
+    % SRR - Nonlinear constraint is of the form: xT*Q*x + qT*x = b , where
+    % b is const, x is state (34 dimensional in N=2 case).
+    %       Notes:  Q = Q_nonlin_eq_constraint
+    Q_nonlin_eq_constraint1 = zeros(34);
+    Q_nonlin_eq_constraint2 = zeros(34);
+    Q_nonlin_eq_constraint3 = zeros(34);
+    Q_nonlin_eq_constraint4 = zeros(34);    
+    Q_nonlin_eq_constraint5 = zeros(34);    
+    Q_nonlin_eq_constraint6 = zeros(34);    
+    Q_nonlin_eq_constraint7 = zeros(34);    
+    Q_nonlin_eq_constraint8 = zeros(34);    
+    Q_nonlin_eq_constraint9 = zeros(34);    
+    Q_nonlin_eq_constraint10 = zeros(34);    
+    Q_nonlin_eq_constraint11 = zeros(34);    
+    Q_nonlin_eq_constraint12 = zeros(34);    
+    Q_nonlin_ineq_constraint1 = zeros(34);    
+
+    q_nonlin_eq_constraint1 = zeros(34,1);
+    q_nonlin_eq_constraint2 = zeros(34,1);
+    q_nonlin_eq_constraint3 = zeros(34,1);
+    q_nonlin_eq_constraint4 = zeros(34,1);
+    q_nonlin_eq_constraint5 = zeros(34,1);
+    q_nonlin_eq_constraint6 = zeros(34,1);
+    q_nonlin_eq_constraint7 = zeros(34,1);
+    q_nonlin_eq_constraint8 = zeros(34,1);
+    q_nonlin_eq_constraint9 = zeros(34,1);
+    q_nonlin_eq_constraint10 = zeros(34,1);
+    q_nonlin_eq_constraint11 = zeros(34,1);
+    q_nonlin_eq_constraint12 = zeros(34,1);
+    q_nonlin_ineq_constraint1 = zeros(34,1);
+    % SRR - Formulating Constraint: R(t+1)*z(t+1) - Phi(t+1) = 0  
+    %       Note that this is 3 by 1 matrix system 
+    % This gives 3 quadratic equations. We need 3 quadcon since dim(xT*Q*x) = 1
+    % SRR- first eqn R11*z1 + R12*z2 + R13*z3 - Phi1 = 0 (all are in t + 1)
+    Q_nonlin_eq_constraint1(26,14) =  1.0;
+    Q_nonlin_eq_constraint1(27,15) =  1.0;
+    Q_nonlin_eq_constraint1(28,16) =  1.0;
+    q_nonlin_eq_constraint1(5,1) = -1.0;
+    model.quadcon(1).Qc = sparse(Q_nonlin_eq_constraint1);
+    model.quadcon(1).q = q_nonlin_eq_constraint1;
+    model.quadcon(1).rhs = 0.0;
+    model.quadcon(1).sense = '=';
+    % second eqn R21*z1 + R22*z2 + R23*z3 - Phi2 = 0 (all in t+1)
+    Q_nonlin_eq_constraint2(29,14) =  1.0;
+    Q_nonlin_eq_constraint2(30,15) =  1.0;
+    Q_nonlin_eq_constraint2(31,16) =  1.0;
+    q_nonlin_eq_constraint2(6,1) = -1.0;
+    model.quadcon(2).Qc = sparse(Q_nonlin_eq_constraint2);
+    model.quadcon(2).q = q_nonlin_eq_constraint2;
+    model.quadcon(2).rhs = 0.0;
+    model.quadcon(2).sense = '=';
+    % third eqn R31*ze + R32*z2 + R33*z3 - Phi3 = 0 (all in t+1)
+    Q_nonlin_eq_constraint2(32,14) =  1.0;
+    Q_nonlin_eq_constraint2(33,15) =  1.0;
+    Q_nonlin_eq_constraint2(34,16) =  1.0;
+    q_nonlin_eq_constraint2(7,1) = -1.0;
+    model.quadcon(3).Qc = sparse(Q_nonlin_eq_constraint3);
+    model.quadcon(3).q = q_nonlin_eq_constraint3;
+    model.quadcon(3).rhs = 0.0;
+    model.quadcon(3).sense = '=';
+    % SRR - Formulating Constraint:  R(t+1) = R(t) + Phi(t+1)*Phi'(t+1)
+    %                             => R(t+1) - Phi(t+1)*Phi'(t+1) = R(t)
+    %       Note that this is 3 by 3 matrix system, so there are 9
+    %       quadratic equations here. Treating R(t) as known (initalized)
+    % SRR- R11 -Phi11^2  = R11_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint4(5,5) = -1.0;
+    q_nonlin_eq_constraint4(26,1) = 1.0;
+    model.quadcon(4).Qc = sparse(Q_nonlin_eq_constraint4);
+    model.quadcon(4).q = q_nonlin_eq_constraint4;
+    model.quadcon(4).rhs = R_mat(1,1);
+    model.quadcon(4).sense = '=';
+    % SRR- R12 - Phi1*Phi2 = R12_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint5(5,6) = -1.0;
+    q_nonlin_eq_constraint5(27,1) = 1.0;
+    model.quadcon(5).Qc = sparse(Q_nonlin_eq_constraint5);
+    model.quadcon(5).q = q_nonlin_eq_constraint5;
+    model.quadcon(5).rhs = R_mat(1,2);
+    model.quadcon(5).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint6(5,7) = -1.0;
+    q_nonlin_eq_constraint6(28,1) = 1.0;
+    model.quadcon(6).Qc = sparse(Q_nonlin_eq_constraint6);
+    model.quadcon(6).q = q_nonlin_eq_constraint6;
+    model.quadcon(6).rhs = R_mat(1,3);
+    model.quadcon(6).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint7(6,5) = -1.0;
+    q_nonlin_eq_constraint7(29,1) = 1.0;
+    model.quadcon(7).Qc = sparse(Q_nonlin_eq_constraint7);
+    model.quadcon(7).q = q_nonlin_eq_constraint7;
+    model.quadcon(7).rhs = R_mat(2,1);
+    model.quadcon(7).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint8(6,6) = -1.0;
+    q_nonlin_eq_constraint8(30,1) = 1.0;
+    model.quadcon(8).Qc = sparse(Q_nonlin_eq_constraint8);
+    model.quadcon(8).q = q_nonlin_eq_constraint8;
+    model.quadcon(8).rhs = R_mat(2,2);
+    model.quadcon(8).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint9(6,7) = -1.0;
+    q_nonlin_eq_constraint9(31,1) = 1.0;
+    model.quadcon(9).Qc = sparse(Q_nonlin_eq_constraint9);
+    model.quadcon(9).q = q_nonlin_eq_constraint9;
+    model.quadcon(9).rhs = R_mat(2,3);
+    model.quadcon(9).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint10(7,5) = -1.0;
+    q_nonlin_eq_constraint10(32,1) = 1.0;
+    model.quadcon(10).Qc = sparse(Q_nonlin_eq_constraint10);
+    model.quadcon(10).q = q_nonlin_eq_constraint10;
+    model.quadcon(10).rhs = R_mat(3,1);
+    model.quadcon(10).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint11(7,6) = -1.0;
+    q_nonlin_eq_constraint11(33,1) = 1.0;
+    model.quadcon(11).Qc = sparse(Q_nonlin_eq_constraint11);
+    model.quadcon(11).q = q_nonlin_eq_constraint11;
+    model.quadcon(11).rhs = R_mat(3,2);
+    model.quadcon(11).sense = '=';
+    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    Q_nonlin_eq_constraint12(7,7) = -1.0;
+    q_nonlin_eq_constraint12(34,1) = 1.0;
+    model.quadcon(12).Qc = sparse(Q_nonlin_eq_constraint12);
+    model.quadcon(12).q = q_nonlin_eq_constraint12;
+    model.quadcon(12).rhs = R_mat(3,3);
+    model.quadcon(12).sense = '=';
+    
+    % SRR - Formulating Constraint: Phi'(t+1)*z(t+1) >= 0 
+    %       Note that this is a scalar equation, so there is only 1
+    %       quadratic equation here.
+    % SRR- Phi1*z1 + Phi2*z2 + Phi3*z3 >= 0 (LHS in t+1)    
+    Q_nonlin_ineq_constraint1(5, 14) = 1.0;
+    Q_nonlin_ineq_constraint1(6, 15) = 1.0;
+    Q_nonlin_ineq_constraint1(7, 16) = 1.0;
+    model.quadcon(12).Qc = sparse(Q_nonlin_eq_constraint1);
+    model.quadcon(12).q = q_nonlin_ineq_constraint1;
+    model.quadcon(12).rhs = 0.0;
+    model.quadcon(12).sense = '>';
+     
+
     ne = size(Aeq,1);
     ni = size(Aineq,1);
     model.sense = [repmat('=',ne,1);repmat('<',ni,1)];
-    model.lb = lb;
-    model.ub = ub;
-
+    model.lb = lb; % lower bound
+    model.ub = ub; %upper bound. 
     params.outputflag = 0;
-%     params.NonConvex = 2;
+    params.NonConvex = 2;
     % params.DualReductions = 0;
     result = gurobi(model, params);
     disp(result.status)
