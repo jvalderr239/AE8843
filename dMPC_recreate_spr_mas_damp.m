@@ -6,8 +6,8 @@ rng('default')
 variance = 1;
 
 init_state = [2;
-              2;
-              0];
+              1;
+              3];
 % SRR - for the example in the paper, dim(y) = 1. 
 % y_measured dimension should also be 1. 
 % From their graphs in section 4, it seems they set their initial output (y)
@@ -24,7 +24,7 @@ init_cntrl = [0];
 k1 = 3;
 k2 = 2;
 m = 5;
-b = 1;
+b = 2;
 
 A = [0,             1,   0;
      -(k1+k2)./m,   0,   k1./m;
@@ -48,7 +48,7 @@ theta_truth = [0;
                0;
                1];
            
-Tf = .5; % seconds
+Tf = 40; % seconds
 dt = 0.01;
 time_series = 0:dt:Tf;
 % SRR - Initializing k_star to all zeros, the same way the author does in 
@@ -214,7 +214,7 @@ for i = 2:length(time_series)
     y_measured(:,i) = theta_truth'*xt + (sqrt(variance) * randn(1,1)); 
     y_hat = y_measured(:,i);
 %   AS Fixing propagation  
-    xstar(:,i) = (A*xt+B*ustar(:,i));   %Linearized Model Update
+    xstar(:,i) = xt + (A*xt+B*ustar(:,i))*dt;   %Linearized Model Update
     xt = xstar(:,i);
     % After finding min and propagating, recalculate G, theta_hat, and
     % P
