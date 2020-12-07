@@ -236,12 +236,11 @@ for i = 2:length(time_series)
 %     if (i > 3) && (sign(xstar(2,i-2)) ~= sign(xstar(2,i-1)))
 %         ustar(i-1) = 0;
 %     end
-    % y_hat_nl is the "output measurement", from page 1 system(1) in the 
-    % paper. 
-    y_hat_nl(:,i) = y_hat_nl(:,i-1)+(A * y_hat_nl(:,i-1) + B * ustar(:,i))*dt + (sqrt(variance) * randn(3,1)); 
-    y_hat_nl(:,i) = theta (sqrt(variance) * randn(3,1)); 
+    
+    % UPDATE SRR - y_hat_nl is the "output measurement", from page 1 
+    % system(1) in the  paper. reworked this equation to match the eqns.
+    y_hat_nl(:,i) = theta_truth'*xt + (sqrt(variance) * randn(1,1)); 
     y_hat = y_hat_nl(:,i);
-    y_hat = y_hat(1);
     xstar(:,i) = xt + (A*xt+B*ustar(:,i))*dt;   %Linearized Model Update
     xt = xstar(:,i);
     % After finding min and propagating, recalculate G, theta_hat, and
