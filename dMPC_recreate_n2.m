@@ -108,9 +108,9 @@ for i = 2:length(time_series)
     Hmat(10,10) = k_star(3,3);
     
     % phi'*z for k > 0
-    Hmat(,15)
-    Hmat(,16)
-    Hmat(,17)
+    Hmat(5,14) = 1.0;
+    Hmat(6,15) = 1.0;
+    Hmat(7,16) = 1.0;
 
     % UPDATE AS : Updated the f_vec 
     f_vec =  zeros(34,1);
