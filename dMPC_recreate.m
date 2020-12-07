@@ -9,8 +9,11 @@ init_state = [2;
               2;
               0];
 % SRR - for the example in the paper, dim(y) = 1. 
-y_hat_nl(:,1) = init_state;         
-y_hat = y_hat_nl(1);
+% y_hat_nl dimension should also be 1. 
+% From their graphs in section 4, it seems they set their initial output (y)
+% to 1000 or so , I thought 10 may be a good starting point.
+y_hat_nl = 10 ;         
+y_hat = y_hat_nl;
 goal_state = [0;
               0;
               0];
@@ -30,7 +33,13 @@ B = [1;
  theta = [5;
           2;
           -1];
-       
+% SRR - the above theta variable is overwrriten below the xt, ut
+% definitions. made a theta_truth variable to compute y_measured in the 
+% measurement equations.
+theta_truth = [5;
+               2;
+               -1;]
+           
 Tf = 5; % seconds
 dt = 0.01;
 time_series = 0:dt:Tf;
@@ -208,8 +217,10 @@ for i = 2:length(time_series)
 %     if (i > 3) && (sign(xstar(2,i-2)) ~= sign(xstar(2,i-1)))
 %         ustar(i-1) = 0;
 %     end
-        
+    % y_hat_nl is the "output measurement", from page 1 system(1) in the 
+    % paper. 
     y_hat_nl(:,i) = y_hat_nl(:,i-1)+(A * y_hat_nl(:,i-1) + B * ustar(:,i))*dt + (sqrt(variance) * randn(3,1)); 
+    y_hat_nl(:,i) = theta (sqrt(variance) * randn(3,1)); 
     y_hat = y_hat_nl(:,i);
     y_hat = y_hat(1);
     xstar(:,i) = xt + (A*xt+B*ustar(:,i))*dt;   %Linearized Model Update
