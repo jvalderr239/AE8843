@@ -108,6 +108,7 @@ for i = 2:length(time_series)
     Hmat(10,10) = k_star(3,3);
     
     % phi'*z for k > 0
+    % SRR - 5,6,7 maps to phi_t+1. 14,15,16 maps to z_t+1. 
     Hmat(5,14) = 1.0;
     Hmat(6,15) = 1.0;
     Hmat(7,16) = 1.0;
