@@ -121,8 +121,16 @@ for i = 2:length(time_series)
     
     % Updating Aeq:
     Aeq = zeros(34);
+    % SRR - confiremd to satisfy yhat_t = y_t for k =0
     Aeq(1,1) = 1;
-    % Aeq row 2 is 0
+    % SRR - Update to row 2 adding yhat(t+1) constraint.
+    %           yhat_(t+1) = theta_hat*Phi_t+1 , for k =1.
+    %           => y_hat(t+1) - theta_hat*Phi_(t+1) = 0
+    Aeq(2, 2) = 1;
+    Aeq(2, 5) = -theta_hat(1,1);
+    Aeq(2, 6) = -theta_hat(2,1);
+    Aeq(2, 7) = -theta_hat(3,1);
+    
     Aeq(3,2) = -B(1,1);
     Aeq(3,3) = 1;
     
