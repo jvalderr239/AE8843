@@ -341,42 +341,42 @@ for i = 2:length(time_series)
     model.quadcon(6).q = q_nonlin_eq_constraint6;
     model.quadcon(6).rhs = R_mat(1,3);
     model.quadcon(6).sense = '=';
-    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    % SRR- R21 - Phi2*Phi1 = R21_t0 (LHS in t+1, RHS in t)
     Q_nonlin_eq_constraint7(6,5) = -1.0;
     q_nonlin_eq_constraint7(29,1) = 1.0;
     model.quadcon(7).Qc = sparse(Q_nonlin_eq_constraint7);
     model.quadcon(7).q = q_nonlin_eq_constraint7;
     model.quadcon(7).rhs = R_mat(2,1);
     model.quadcon(7).sense = '=';
-    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    % SRR- R22 - Phi2*Phi2 = R22_t0 (LHS in t+1, RHS in t)
     Q_nonlin_eq_constraint8(6,6) = -1.0;
     q_nonlin_eq_constraint8(30,1) = 1.0;
     model.quadcon(8).Qc = sparse(Q_nonlin_eq_constraint8);
     model.quadcon(8).q = q_nonlin_eq_constraint8;
     model.quadcon(8).rhs = R_mat(2,2);
     model.quadcon(8).sense = '=';
-    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    % SRR- R23 - Phi2*Phi3 = R23_t0 (LHS in t+1, RHS in t)
     Q_nonlin_eq_constraint9(6,7) = -1.0;
     q_nonlin_eq_constraint9(31,1) = 1.0;
     model.quadcon(9).Qc = sparse(Q_nonlin_eq_constraint9);
     model.quadcon(9).q = q_nonlin_eq_constraint9;
     model.quadcon(9).rhs = R_mat(2,3);
     model.quadcon(9).sense = '=';
-    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    % SRR- R31 - Phi3*Phi1 = R31_t0 (LHS in t+1, RHS in t)
     Q_nonlin_eq_constraint10(7,5) = -1.0;
     q_nonlin_eq_constraint10(32,1) = 1.0;
     model.quadcon(10).Qc = sparse(Q_nonlin_eq_constraint10);
     model.quadcon(10).q = q_nonlin_eq_constraint10;
     model.quadcon(10).rhs = R_mat(3,1);
     model.quadcon(10).sense = '=';
-    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    % SRR- R32 - Phi3*Phi2 = R32_t0 (LHS in t+1, RHS in t)
     Q_nonlin_eq_constraint11(7,6) = -1.0;
     q_nonlin_eq_constraint11(33,1) = 1.0;
     model.quadcon(11).Qc = sparse(Q_nonlin_eq_constraint11);
     model.quadcon(11).q = q_nonlin_eq_constraint11;
     model.quadcon(11).rhs = R_mat(3,2);
     model.quadcon(11).sense = '=';
-    % SRR- R13 - Phi1*Phi3 = R13_t0 (LHS in t+1, RHS in t)
+    % SRR- R33 - Phi3*Phi3 = R33_t0 (LHS in t+1, RHS in t)
     Q_nonlin_eq_constraint12(7,7) = -1.0;
     q_nonlin_eq_constraint12(34,1) = 1.0;
     model.quadcon(12).Qc = sparse(Q_nonlin_eq_constraint12);
@@ -391,11 +391,11 @@ for i = 2:length(time_series)
     Q_nonlin_ineq_constraint1(5, 14) = 1.0;
     Q_nonlin_ineq_constraint1(6, 15) = 1.0;
     Q_nonlin_ineq_constraint1(7, 16) = 1.0;
-    model.quadcon(12).Qc = sparse(Q_nonlin_eq_constraint1);
-    model.quadcon(12).q = q_nonlin_ineq_constraint1;
-    model.quadcon(12).rhs = 0.0;
-    model.quadcon(12).sense = '>';
-     
+    model.quadcon(13).Qc = sparse(Q_nonlin_eq_constraint1);
+    model.quadcon(13).q = q_nonlin_ineq_constraint1;
+    model.quadcon(13).rhs = 0.0;
+    model.quadcon(13).sense = '>';
+    
 
     ne = size(Aeq,1);
     ni = size(Aineq,1);
