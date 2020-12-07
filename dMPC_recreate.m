@@ -225,19 +225,22 @@ end
 figure
 hold on
 plot(optimal_x(1,:), optimal_x(2,:))
-plot(y_measured(1,:),y_measured(2,:),'r')
-legend('Linearized', 'Non-Linear')
+xlabel('x position')
+ylabel('y position')
 title('x-y plot')
 
 figure
 hold on
-plot(time_series(1:end),ustar(1,:))
-title('v control plot')
+plot(time_series(1:end),y_measured(1,:),'r')
+xlabel('time')
+ylabel('output y')
+title ('output y  measured as a function of time')
 
 figure
 hold on
-plot(time_series(1:end),ustar(2,:))
-title('w control plot')
+plot(time_series(1:end),ustar(1,:))
+title('u star control plot')
+
 
 
 
