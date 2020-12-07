@@ -147,8 +147,27 @@ for i = 2:length(time_series)
     % SRR - Adding constraint for Phi_(t+2). This is for k =1.
     %       Phi(t+2) = A*Phi(t+1) + B*u(t+1)
     %    => Phi(t+2) - A*Phi(t+1) - B*u(t+1) = 0
-    Aeq(6,3) = 
-    Aeq(6,
+    %  Example row: Phi(t+2, element1) - A(1,1)*Phi(t+1, element1) -
+    %  A(1,2)*Phi(t+1, element2) - A(1,3)*Phi(t+1,element3) - B(1,1)*u(t+1)
+    %  = 0
+    Aeq(6,4) = -B(1,1);
+    Aeq(6,5) = -A(1,1);
+    Aeq(6,6) = -A(1,2);
+    Aeq(6,7) = -A(1,3);
+    Aeq(6,8) = 1.0;
+    
+    Aeq(7,4) = -B(2,1);
+    Aeq(7,5) = -A(2,1);
+    Aeq(7,6) = -A(2,2);
+    Aeq(7,7) = -A(2,3);
+    Aeq(7,9) = 1.0;
+    
+    Aeq(8,4) = -B(3,1);
+    Aeq(8,5) = -A(3,1);
+    Aeq(8,6) = -A(3,2);
+    Aeq(8,7) = -A(3,3);
+    Aeq(8,10) = 1.0;
+    
     
     Aeq(6,6) = R_mat(1,1);
     Aeq(6,7) = R_mat(1,2);
