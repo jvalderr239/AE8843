@@ -168,6 +168,7 @@ for i = 2:length(time_series)
     Aeq(8,7) = -A(3,3);
     Aeq(8,10) = 1.0;
     
+    % SRR - In progress
     
     Aeq(6,6) = R_mat(1,1);
     Aeq(6,7) = R_mat(1,2);
@@ -195,12 +196,19 @@ for i = 2:length(time_series)
     % UPDATE SRR - beq(1) = y_measured not y_hat. be careful with mixing up
     % y's.
     beq = zeros(34,1);
+    % SRR- yhat(t) constraint.
     beq(1) = y_hat;
+    % SRR - yhat(t+1) constraint.
     beq(2) = 0;
+    % SRR - Phi(t+1) constraint.
     beq(3) = A(1,1)*xt(1,1)+A(1,2)*xt(2,1)+A(1,3)*xt(3,1);
     beq(4) = A(2,1)*xt(1,1)+A(2,2)*xt(2,1)+A(2,3)*xt(3,1);
     beq(5) = A(3,1)*xt(1,1)+A(3,2)*xt(2,1)+A(3,3)*xt(3,1);
-    
+    % SRR - Phi(t+2) constraint
+    beq(6) = 0.0;
+    beq(7) = 0.0;
+    beq(8) = 0.0;
+    % SRR - In progress:
     beq(6) = xt(1);
     beq(7) = xt(2);
     beq(8) = xt(3);
