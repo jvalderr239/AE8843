@@ -230,7 +230,7 @@ for i = 2:length(time_series)
     
     Aineq = zeros(34);
     % SRR - adding z(t) inequality constraint, for k = 0
-    %      -Phi(1,1)*z(t, element 1) - Phi(2,1)*z(t, element2) - ... <= 0
+    %      -Phi(1,1)*z(t, element 1) - Phi(2,1)*z(t, element2) - ... < 0
     Aineq(1,11) = -xt(1,1);
     Aineq(1,12) = -xt(2,1);
     Aineq(1,13) = -xt(3,1);
