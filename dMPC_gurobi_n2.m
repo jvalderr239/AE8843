@@ -121,7 +121,7 @@ for i = 2:length(time_series)
     f_vec(13) = xt(3,:);
     
     % Updating Aeq:
-    Aeq = zeros(34);
+    Aeq = zeros(33,34);
     % SRR - confiremd to satisfy yhat_t = y_t for k =0
     Aeq(1,1) = 1;
     % SRR - Update to row 2 adding yhat(t+1) constraint.
@@ -198,7 +198,7 @@ for i = 2:length(time_series)
     % Skipping R(t+1) constraint beacuse its a nonlinear constraint..
     
     % UPDATE SRR - beq(1) = y_measured 
-    beq = zeros(34,1);
+    beq = zeros(33,1);
     % SRR- yhat(t) constraint.
     beq(1) = y_hat;
     % SRR - yhat(t+1) constraint.
@@ -228,7 +228,7 @@ for i = 2:length(time_series)
     beq(20) = R_mat(3,3);
     % SRR - Skipping R(t+1) constraint.
     
-    Aineq = zeros(34);
+    Aineq = zeros(1,34);
     % SRR - adding z(t) inequality constraint, for k = 0
     %      -Phi(1,1)*z(t, element 1) - Phi(2,1)*z(t, element2) - ... < 0
     Aineq(1,11) = -xt(1,1);
@@ -236,7 +236,7 @@ for i = 2:length(time_series)
     Aineq(1,13) = -xt(3,1);
     % SRR - skipping z(t+1) inequality constraint, for k =1 because
     % nonlinear.
-    bineq = zeros(34,1);
+    bineq = zeros(1,1);
     
     lb = ones(34,1)*-inf;
     lb(1) = -2000;
