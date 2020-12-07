@@ -134,17 +134,21 @@ for i = 2:length(time_series)
     
     % SRR - Constraint for Phi_(t+1). This is for k = 0.
     %       Phi(t+1) - B*u(t)= A*Phi(t)
-    Aeq(3,2) = -B(1,1);
-    Aeq(3,3) = 1;
+    Aeq(3,3) = -B(1,1);
+    Aeq(3,5) = 1;
     
-    Aeq(4,2) = -B(2,1);
-    Aeq(4,4) = 1;
+    Aeq(4,3) = -B(2,1);
+    Aeq(4,6) = 1;
     
-    Aeq(5,2) = -B(3,1);
-    Aeq(5,5) = 1;
+    Aeq(5,3) = -B(3,1);
+    Aeq(5,7) = 1;
     
     
-    % SRR - Adding constraint for Phi_(t+1).
+    % SRR - Adding constraint for Phi_(t+2). This is for k =1.
+    %       Phi(t+2) = A*Phi(t+1) + B*u(t+1)
+    %    => Phi(t+2) - A*Phi(t+1) - B*u(t+1) = 0
+    Aeq(6,3) = 
+    Aeq(6,
     
     Aeq(6,6) = R_mat(1,1);
     Aeq(6,7) = R_mat(1,2);
