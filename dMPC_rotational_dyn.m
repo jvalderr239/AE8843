@@ -238,34 +238,36 @@ figure
 hold on
 plot(time_series(1:end), optimal_x(2,:))
 xlabel('Time')
-ylabel('xdot position')
-title('xdot plot')
+ylabel('theta1 dot')
+title('theta1 dot plot')
 
 figure
 hold on
 plot(time_series(1:end), optimal_x(1,:))
 xlabel('Time')
-ylabel('x position')
-title('x plot')
+ylabel('theta1')
+title('theta1 plot')
 
 figure
 hold on
 plot(time_series(1:end), optimal_x(3,:))
 xlabel('Time')
-ylabel('z position')
-title('z plot')
+ylabel('theta2 dot')
+title('theta2 dot plot')
 
 figure
 hold on
 plot(time_series(1:end),y_measured(1,:),'r')
 xlabel('time')
-ylabel('output y')
-title ('output y  measured as a function of time')
+ylabel('y')
+title ('Measurement of theta1 as a function of time')
 
 figure
 hold on
 plot(time_series(1:end),ustar(1,:))
 title('u star control plot')
+xlabel('Time')
+ylabel('u star')
 
 
 

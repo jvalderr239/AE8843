@@ -236,7 +236,7 @@ figure
 hold on
 plot(time_series(1:end), optimal_x(2,:))
 xlabel('Time')
-ylabel('xdot position')
+ylabel('xdot')
 title('xdot plot')
 
 figure
@@ -258,12 +258,14 @@ hold on
 plot(time_series(1:end),y_measured(1,:),'r')
 xlabel('time')
 ylabel('output y')
-title ('output y  measured as a function of time')
+title ('Measured Z position as a function of time')
 
 figure
 hold on
 plot(time_series(1:end),ustar(1,:))
 title('u star control plot')
+xlabel('Time')
+ylabel('u star')
 
 
 

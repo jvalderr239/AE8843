@@ -48,9 +48,9 @@ theta_truth = [5;
 theta_truth = [0;
                0;
                -R]; % Observing current in L2
-theta_truth = [0;
-               1;
-               0]; % Observing capacitor voltage
+% theta_truth = [0;
+%                1;
+%                0]; % Observing capacitor voltage
            
 Tf = 40; % seconds
 dt = 0.01;
@@ -240,34 +240,37 @@ figure
 hold on
 plot(time_series(1:end), optimal_x(2,:))
 xlabel('Time')
-ylabel('xdot position')
-title('xdot plot')
+ylabel('Voltage')
+title('Voltage Across Capacitor')
 
 figure
 hold on
 plot(time_series(1:end), optimal_x(1,:))
 xlabel('Time')
-ylabel('x position')
-title('x plot')
+ylabel('Current')
+title('Current through Inductor 2')
 
 figure
 hold on
 plot(time_series(1:end), optimal_x(3,:))
 xlabel('Time')
-ylabel('z position')
-title('z plot')
+ylabel('Current')
+title('Current Through Inductor 1')
 
 figure
 hold on
 plot(time_series(1:end),y_measured(1,:),'r')
 xlabel('time')
 ylabel('output y')
-title ('output y  measured as a function of time')
+title ('Measurement of Inductor 1 Current as a function of time')
 
 figure
 hold on
 plot(time_series(1:end),ustar(1,:))
 title('u star control plot')
+xlabel('Time')
+ylabel('u star')
+
 
 
 
