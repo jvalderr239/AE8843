@@ -142,6 +142,8 @@ for i = 2:length(time_series)
     Aeq(16,16) = 1;
     Aeq(17,17) = 1;
 
+    % UPDATE SRR - beq(1) = y_measured not y_hat. be careful with mixing up
+    % y's.
     beq = zeros(17,1);
     beq(1) = y_hat;
     beq(2) = 0;
@@ -174,7 +176,8 @@ for i = 2:length(time_series)
     
     ub = lb*-1;
     %% quadprog analysis
-    linear_uopt = quadprog(0.5*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
+    %SRR update, make sure you double H matrix by 2, MATLAB will half it.
+    linear_uopt = quadprog(2*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
 
     %% Gurobi Definition
 %     model.obj = f_vec;
