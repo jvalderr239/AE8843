@@ -9,11 +9,11 @@ init_state = [2;
               2;
               0];
 % SRR - for the example in the paper, dim(y) = 1. 
-% y_hat_nl dimension should also be 1. 
+% y_measured dimension should also be 1. 
 % From their graphs in section 4, it seems they set their initial output (y)
 % to 1000 or so , I thought 10 may be a good starting point.
-y_hat_nl = 10 ;         
-y_hat = y_hat_nl;
+y_measured = 10 ;         
+y_hat = y_measured;
 goal_state = [0;
               0;
               0];
@@ -197,10 +197,10 @@ for i = 2:length(time_series)
     %%
     ustar(:,i) = linear_uopt(2);
     
-    % UPDATE SRR - y_hat_nl is the "output measurement", from page 1 
+    % UPDATE SRR - y_measured is the "output measurement", from page 1 
     % system(1) in the  paper. reworked this equation to match the eqns.
-    y_hat_nl(:,i) = theta_truth'*xt + (sqrt(variance) * randn(1,1)); 
-    y_hat = y_hat_nl(:,i);
+    y_measured(:,i) = theta_truth'*xt + (sqrt(variance) * randn(1,1)); 
+    y_hat = y_measured(:,i);
 %   AS Fixing propagation  
     xstar(:,i) = (A*xt+B*ustar(:,i));   %Linearized Model Update
     xt = xstar(:,i);
@@ -222,7 +222,7 @@ end
 figure
 hold on
 plot(optimal_x(1,:), optimal_x(2,:))
-plot(y_hat_nl(1,:),y_hat_nl(2,:),'r')
+plot(y_measured(1,:),y_measured(2,:),'r')
 legend('Linearized', 'Non-Linear')
 title('x-y plot')
 
