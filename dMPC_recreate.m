@@ -205,8 +205,27 @@ for i = 2:length(time_series)
     lb(2) = -100;
     
     ub = lb*-1;
-    linear_uopt = quadprog(0.5*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
+    %% quadprog analysis
+%     linear_uopt = quadprog(0.5*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
+
+    %% Gurobi Definition
+    model.obj = f_vec;
+    model.Q = sparse(Hmat);
+    model.A = sparse([Aeq;Aineq]);
+    model.rhs = [beq;bineq];
     
+    ne = size(Aeq,1);
+    ni = size(Aineq,1);
+    model.sense = [repmat('=',ne,1);repmat('<',ni,1)];
+    model.lb = lb;
+    model.ub = ub;
+
+    params.outputflag = 0;
+%     params.NonConvex = 2;
+    % params.DualReductions = 0;
+    result = gurobi(model, params);
+    disp(result.status)
+    linear_uopt = result.x;
     %Updated - JEV
     %Returns optimal input as row vector so needs input as row vector
     %
