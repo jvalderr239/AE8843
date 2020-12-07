@@ -168,7 +168,9 @@ for i = 2:length(time_series)
     Aeq(8,7) = -A(3,3);
     Aeq(8,10) = 1.0;
     
-    % SRR - Constraint for z(t) 
+    % SRR - Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
+    % Example row: R(1,1)*z(t, element1) + R(1,2)*z(t, element2) + 
+    % R(1,3)*z(t, element) = Phi(t, element 1)
     Aeq(9,11) = R_mat(1,1);
     Aeq(9,12) = R_mat(1,2);
     Aeq(9,13) = R_mat(1,3);
