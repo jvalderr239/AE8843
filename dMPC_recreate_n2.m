@@ -168,21 +168,20 @@ for i = 2:length(time_series)
     Aeq(8,7) = -A(3,3);
     Aeq(8,10) = 1.0;
     
-    % SRR - In progress
+    % SRR - Constraint for z(t) 
+    Aeq(9,11) = R_mat(1,1);
+    Aeq(9,12) = R_mat(1,2);
+    Aeq(9,13) = R_mat(1,3);
     
-    Aeq(6,6) = R_mat(1,1);
-    Aeq(6,7) = R_mat(1,2);
-    Aeq(6,8) = R_mat(1,3);
+    Aeq(10,11) = R_mat(2,1);
+    Aeq(10,12) = R_mat(2,2);
+    Aeq(10,13) = R_mat(2,3);
     
-    Aeq(7,6) = R_mat(2,1);
-    Aeq(7,7) = R_mat(2,2);
-    Aeq(7,8) = R_mat(2,3);
+    Aeq(11,11) = R_mat(3,1);
+    Aeq(11,12) = R_mat(3,2);
+    Aeq(11,13) = R_mat(3,3);
     
-    Aeq(8,6) = R_mat(3,1);
-    Aeq(8,7) = R_mat(3,2);
-    Aeq(8,8) = R_mat(3,3);
-    
-    
+    % SRR-  in progress
     Aeq(9,9) = 1;
     Aeq(10,10) = 1;
     Aeq(11,11) = 1;
@@ -208,10 +207,11 @@ for i = 2:length(time_series)
     beq(6) = 0.0;
     beq(7) = 0.0;
     beq(8) = 0.0;
+    % SRR - z(t) constraint.
+    beq(9) = xt(1);
+    beq(10) = xt(2);
+    beq(11) = xt(3);
     % SRR - In progress:
-    beq(6) = xt(1);
-    beq(7) = xt(2);
-    beq(8) = xt(3);
     beq(9) = R_mat(1,1);
     beq(10) = R_mat(1,2);
     beq(11) = R_mat(1,3);
