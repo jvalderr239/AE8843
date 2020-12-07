@@ -102,14 +102,14 @@ for i = 2:length(time_series)
     Hmat(1,1) = 1;
     Hmat(2,2) = r;
     Hmat(3,3) = k_star(1,1);
-    Hmat(4,4) = k_star(1,2);
-    Hmat(5,5) = k_star(1,3);
-    Hmat(6,6) = k_star(2,1);
-    Hmat(7,7) = k_star(2,2);
-    Hmat(8,8) = k_star(2,3);
-    Hmat(9,9) = k_star(3,1);
-    Hmat(10,10) = k_star(3,2);
-    Hmat(11,11) = k_star(3,3);
+    Hmat(3,4) = k_star(1,2);
+    Hmat(3,5) = k_star(1,3);
+    Hmat(4,3) = k_star(2,1);
+    Hmat(4,4) = k_star(2,2);
+    Hmat(4,5) = k_star(2,3);
+    Hmat(5,3) = k_star(3,1);
+    Hmat(5,4) = k_star(3,2);
+    Hmat(5,5) = k_star(3,3);
 
 %     Hmat = 0.5*Hmat;
             
@@ -118,8 +118,12 @@ for i = 2:length(time_series)
 %                 0, 0, k_star, 0, 0;
 %                 0, 0, 0, 0, 0;
 %                 0, 0, 0, 0, 0];
-            
+
+    % UPDATE AS : Updated the f_vec 
     f_vec =  zeros(17,1);
+    f_vec(6) = xt(1,:);
+    f_vec(7) = xt(2,:);
+    f_vec(8) = xt(3,:);
     
     Aeq = zeros(17);
     Aeq(1,1) = 1;
