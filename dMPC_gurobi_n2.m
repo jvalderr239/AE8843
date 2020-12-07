@@ -402,7 +402,7 @@ for i = 2:length(time_series)
     model.sense = [repmat('=',ne,1);repmat('<',ni,1)];
     model.lb = lb; % lower bound
     model.ub = ub; %upper bound. 
-    params.outputflag = 0;
+    params.outputflag = 1;
     params.NonConvex = 2;
     % params.DualReductions = 0;
     result = gurobi(model, params);
