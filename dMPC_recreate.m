@@ -197,7 +197,7 @@ for i = 2:length(time_series)
     
     ub = lb*-1;
     %% quadprog analysis
-    linear_uopt = quadprog(0.5*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
+%     linear_uopt = quadprog(0.5*Hmat,f_vec,Aineq,bineq,Aeq,beq,lb,ub);
 
     %% Gurobi Definition
     model.obj = f_vec;
@@ -212,6 +212,7 @@ for i = 2:length(time_series)
     model.ub = ub;
 
     params.outputflag = 0;
+%     params.NonConvex = 2;
     % params.DualReductions = 0;
     result = gurobi(model, params);
     disp(result.status)
