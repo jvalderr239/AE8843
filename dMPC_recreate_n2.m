@@ -183,19 +183,21 @@ for i = 2:length(time_series)
     Aeq(11,12) = R_mat(3,2);
     Aeq(11,13) = R_mat(3,3);
     
-    % SRR-  in progress
-    Aeq(9,9) = 1;
-    Aeq(10,10) = 1;
-    Aeq(11,11) = 1;
-    Aeq(12,12) = 1;
-    Aeq(13,13) = 1;
-    Aeq(14,14) = 1;
-    Aeq(15,15) = 1;
-    Aeq(16,16) = 1;
-    Aeq(17,17) = 1;
-
-    % UPDATE SRR - beq(1) = y_measured not y_hat. be careful with mixing up
-    % y's.
+    % SRR- Skipping z(t+1) because its a nonlinear constraint.
+    % SRR- R(t) constraint. R(t) = P(t)^-1 for k = 0.
+    % Example Row: R(t, element (1,1)) = R_mat(1,1) = element (1,1) of P(t) ^-1
+    Aeq(12,17) = 1;
+    Aeq(13,18) = 1;
+    Aeq(14,19) = 1;
+    Aeq(15,20) = 1;
+    Aeq(16,21) = 1;
+    Aeq(17,22) = 1;
+    Aeq(18,23) = 1;
+    Aeq(19,24) = 1;
+    Aeq(20,25) = 1;
+    % Skipping R(t+1) constraint beacuse its a nonlinear constraint..
+    
+    % UPDATE SRR - beq(1) = y_measured 
     beq = zeros(34,1);
     % SRR- yhat(t) constraint.
     beq(1) = y_hat;
@@ -213,16 +215,18 @@ for i = 2:length(time_series)
     beq(9) = xt(1);
     beq(10) = xt(2);
     beq(11) = xt(3);
-    % SRR - In progress:
-    beq(9) = R_mat(1,1);
-    beq(10) = R_mat(1,2);
-    beq(11) = R_mat(1,3);
-    beq(12) = R_mat(2,1);
-    beq(13) = R_mat(2,2);
-    beq(14) = R_mat(2,3);
-    beq(15) = R_mat(3,1);
-    beq(16) = R_mat(3,2);
-    beq(17) = R_mat(3,3);
+    % SRR - skipping z(t+1) nonlinear constraint.
+    % SRR - R(t) constraint:
+    beq(12) = R_mat(1,1);
+    beq(13) = R_mat(1,2);
+    beq(14) = R_mat(1,3);
+    beq(15) = R_mat(2,1);
+    beq(16) = R_mat(2,2);
+    beq(17) = R_mat(2,3);
+    beq(18) = R_mat(3,1);
+    beq(19) = R_mat(3,2);
+    beq(20) = R_mat(3,3);
+    % SRR - Skipping R(t+1) constraint.
     
     Aineq = zeros(34);
     Aineq(6,6) = -xt(1,1);
