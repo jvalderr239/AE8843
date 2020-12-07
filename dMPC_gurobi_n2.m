@@ -120,9 +120,11 @@ for i = 2:length(time_series)
     f_vec(12) = xt(2,:);
     f_vec(13) = xt(3,:);
     
+    % SRR UPDATE -- cannot be zeros(34) because dim(Aeq + Aineq) must = 34
+    % for gurobi.
     % Updating Aeq:
     Aeq = zeros(33,34);
-    % SRR - confiremd to satisfy yhat_t = y_t for k =0
+    % SRR - Confirmed to satisfy yhat_t = y_t for k =0
     Aeq(1,1) = 1;
     % SRR - Update to row 2 adding yhat(t+1) constraint.
     %           yhat_(t+1) = theta_hat*Phi_t+1 , for k =1.
@@ -168,9 +170,9 @@ for i = 2:length(time_series)
     Aeq(8,7) = -A(3,3);
     Aeq(8,10) = 1.0;
     
-    % SRR - OPTIONAL (gurobi) Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
-    % Example row: R(1,1)*z(t, element1) + R(1,2)*z(t, element2) + 
-    % R(1,3)*z(t, element) = Phi(t, element 1)
+    % SRR - REVISED (gurobi) Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
+    %  This constraint is a function of R(t)*z(t) which should be treated
+    %  as a quadratic constraint, since R(t), z(t) are both part of x. 
 %     Aeq(9,11) = R_mat(1,1);
 %     Aeq(9,12) = R_mat(1,2);
 %     Aeq(9,13) = R_mat(1,3);
@@ -186,15 +188,16 @@ for i = 2:length(time_series)
     % SRR- Skipping z(t+1) because its a nonlinear constraint.
     % SRR- R(t) constraint. R(t) = P(t)^-1 for k = 0.
     % Example Row: R(t, element (1,1)) = R_mat(1,1) = element (1,1) of P(t) ^-1
-    Aeq(12,17) = 1;
-    Aeq(13,18) = 1;
-    Aeq(14,19) = 1;
-    Aeq(15,20) = 1;
-    Aeq(16,21) = 1;
-    Aeq(17,22) = 1;
-    Aeq(18,23) = 1;
-    Aeq(19,24) = 1;
-    Aeq(20,25) = 1;
+    Aeq(9,17) = 1;
+    Aeq(10,18) = 1;
+    Aeq(11,19) = 1;
+    Aeq(12,20) = 1;
+    Aeq(13,21) = 1;
+    Aeq(14,22) = 1;
+    Aeq(15,23) = 1;
+    Aeq(16,24) = 1;
+    Aeq(17,25) = 1;
+    % 12 - 20
     % Skipping R(t+1) constraint beacuse its a nonlinear constraint..
     
     % UPDATE SRR - beq(1) = y_measured 
@@ -211,21 +214,21 @@ for i = 2:length(time_series)
     beq(6) = 0.0;
     beq(7) = 0.0;
     beq(8) = 0.0;
-    % SRR - OPTIONAL. z(t) constraint.
+    % SRR - REVISEd, MOVED TO GUROBI AS NL CONSTRAINT BELOW. z(t) constraint.
 %     beq(9) = xt(1);
 %     beq(10) = xt(2);
 %     beq(11) = xt(3);
     % SRR - skipping z(t+1) nonlinear constraint.
     % SRR - R(t) constraint:
-    beq(12) = R_mat(1,1);
-    beq(13) = R_mat(1,2);
-    beq(14) = R_mat(1,3);
-    beq(15) = R_mat(2,1);
-    beq(16) = R_mat(2,2);
-    beq(17) = R_mat(2,3);
-    beq(18) = R_mat(3,1);
-    beq(19) = R_mat(3,2);
-    beq(20) = R_mat(3,3);
+    beq(9) = R_mat(1,1);
+    beq(10) = R_mat(1,2);
+    beq(11) = R_mat(1,3);
+    beq(12) = R_mat(2,1);
+    beq(13) = R_mat(2,2);
+    beq(14) = R_mat(2,3);
+    beq(15) = R_mat(3,1);
+    beq(16) = R_mat(3,2);
+    beq(17) = R_mat(3,3);
     % SRR - Skipping R(t+1) constraint.
     
     Aineq = zeros(1,34);
@@ -289,6 +292,8 @@ for i = 2:length(time_series)
     q_nonlin_eq_constraint11 = zeros(34,1);
     q_nonlin_eq_constraint12 = zeros(34,1);
     q_nonlin_eq_constraint13 = zeros(34,1);
+    q_nonlin_eq_constraint14 = zeros(34,1);
+    q_nonlin_eq_constraint15 = zeros(34,1);
     q_nonlin_ineq_constraint1 = zeros(34,1);
     
 
@@ -390,6 +395,33 @@ for i = 2:length(time_series)
     model.quadcon(12).rhs = R_mat(3,3);
     model.quadcon(12).sense = '=';
     
+    % SRR - REVISED: Formulating Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
+    % Example row: R(1,1)*z(t, element1) + R(1,2)*z(t, element2) + 
+    % R(1,3)*z(t, element) = Phi(t, element 1)
+    Q_nonlin_eq_constraint13(17,11)= 1.0;
+    Q_nonlin_eq_constraint13(18,12)= 1.0;
+    Q_nonlin_eq_constraint13(19,13)= 1.0;
+    model.quadcon(13).Qc = sparse(Q_nonlin_eq_constraint13);
+    model.quadcon(13).q = q_nonlin_eq_constraint13;
+    model.quadcon(13).rhs = xt(1);
+    model.quadcon(13).sense = '=';
+    
+    Q_nonlin_eq_constraint14(20,11)= 1.0;
+    Q_nonlin_eq_constraint14(21,12)= 1.0;
+    Q_nonlin_eq_constraint14(22,13)= 1.0;
+    model.quadcon(14).Qc = sparse(Q_nonlin_eq_constraint14);
+    model.quadcon(14).q = q_nonlin_eq_constraint14;
+    model.quadcon(14).rhs = xt(2);
+    model.quadcon(14).sense = '=';
+    
+    Q_nonlin_eq_constraint15(23,11)= 1.0;
+    Q_nonlin_eq_constraint15(24,12)= 1.0;
+    Q_nonlin_eq_constraint15(25,13)= 1.0;
+    model.quadcon(15).Qc = sparse(Q_nonlin_eq_constraint15);
+    model.quadcon(15).q = q_nonlin_eq_constraint15;
+    model.quadcon(15).rhs = xt(3);
+    model.quadcon(15).sense = '=';
+    
     % SRR - Formulating Constraint: Phi'(t+1)*z(t+1) >= 0 
     %       Note that this is a scalar equation, so there is only 1
     %       quadratic equation here.
@@ -397,38 +429,10 @@ for i = 2:length(time_series)
     Q_nonlin_ineq_constraint1(5, 14) = 1.0;
     Q_nonlin_ineq_constraint1(6, 15) = 1.0;
     Q_nonlin_ineq_constraint1(7, 16) = 1.0;
-    model.quadcon(13).Qc = sparse(Q_nonlin_eq_constraint1);
-    model.quadcon(13).q = q_nonlin_ineq_constraint1;
-    model.quadcon(13).rhs = 0.0;
-    model.quadcon(13).sense = '>';
-    
-    % SRR - OPTIONAL: Formulating Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
-    % Example row: R(1,1)*z(t, element1) + R(1,2)*z(t, element2) + 
-    % R(1,3)*z(t, element) = Phi(t, element 1)
-    Q_nonlin_eq_constraint13(17,11)= 1.0;
-    Q_nonlin_eq_constraint13(18,12)= 1.0;
-    Q_nonlin_eq_constraint13(19,13)= 1.0;
-    model.quadcon(14).Qc = sparse(Q_nonlin_eq_constraint13);
-    model.quadcon(14).q = q_nonlin_eq_constraint13;
-    model.quadcon(14).rhs = xt(1);
-    model.quadcon(14).sense = '=';
-    
-    Q_nonlin_eq_constraint14(20,11)= 1.0;
-    Q_nonlin_eq_constraint14(21,12)= 1.0;
-    Q_nonlin_eq_constraint14(22,13)= 1.0;
-    model.quadcon(15).Qc = sparse(Q_nonlin_eq_constraint14);
-    model.quadcon(15).q = q_nonlin_eq_constraint13;
-    model.quadcon(15).rhs = xt(2);
-    model.quadcon(15).sense = '=';
-    
-    Q_nonlin_eq_constraint15(23,11)= 1.0;
-    Q_nonlin_eq_constraint15(24,12)= 1.0;
-    Q_nonlin_eq_constraint15(25,13)= 1.0;
-    model.quadcon(16).Qc = sparse(Q_nonlin_eq_constraint15);
-    model.quadcon(16).q = q_nonlin_eq_constraint13;
-    model.quadcon(16).rhs = xt(3);
-    model.quadcon(16).sense = '=';
-    
+    model.quadcon(16).Qc = sparse(Q_nonlin_eq_constraint1);
+    model.quadcon(16).q = q_nonlin_ineq_constraint1;
+    model.quadcon(16).rhs = 0.0;
+    model.quadcon(16).sense = '>';
 
     ne = size(Aeq,1);
     ni = size(Aineq,1);
