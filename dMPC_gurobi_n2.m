@@ -168,20 +168,20 @@ for i = 2:length(time_series)
     Aeq(8,7) = -A(3,3);
     Aeq(8,10) = 1.0;
     
-    % SRR - Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
+    % SRR - OPTIONAL (gurobi) Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
     % Example row: R(1,1)*z(t, element1) + R(1,2)*z(t, element2) + 
     % R(1,3)*z(t, element) = Phi(t, element 1)
-    Aeq(9,11) = R_mat(1,1);
-    Aeq(9,12) = R_mat(1,2);
-    Aeq(9,13) = R_mat(1,3);
-    
-    Aeq(10,11) = R_mat(2,1);
-    Aeq(10,12) = R_mat(2,2);
-    Aeq(10,13) = R_mat(2,3);
-    
-    Aeq(11,11) = R_mat(3,1);
-    Aeq(11,12) = R_mat(3,2);
-    Aeq(11,13) = R_mat(3,3);
+%     Aeq(9,11) = R_mat(1,1);
+%     Aeq(9,12) = R_mat(1,2);
+%     Aeq(9,13) = R_mat(1,3);
+%     
+%     Aeq(10,11) = R_mat(2,1);
+%     Aeq(10,12) = R_mat(2,2);
+%     Aeq(10,13) = R_mat(2,3);
+%     
+%     Aeq(11,11) = R_mat(3,1);
+%     Aeq(11,12) = R_mat(3,2);
+%     Aeq(11,13) = R_mat(3,3);
     
     % SRR- Skipping z(t+1) because its a nonlinear constraint.
     % SRR- R(t) constraint. R(t) = P(t)^-1 for k = 0.
@@ -211,10 +211,10 @@ for i = 2:length(time_series)
     beq(6) = 0.0;
     beq(7) = 0.0;
     beq(8) = 0.0;
-    % SRR - z(t) constraint.
-    beq(9) = xt(1);
-    beq(10) = xt(2);
-    beq(11) = xt(3);
+    % SRR - OPTIONAL. z(t) constraint.
+%     beq(9) = xt(1);
+%     beq(10) = xt(2);
+%     beq(11) = xt(3);
     % SRR - skipping z(t+1) nonlinear constraint.
     % SRR - R(t) constraint:
     beq(12) = R_mat(1,1);
@@ -270,7 +270,10 @@ for i = 2:length(time_series)
     Q_nonlin_eq_constraint9 = zeros(34);    
     Q_nonlin_eq_constraint10 = zeros(34);    
     Q_nonlin_eq_constraint11 = zeros(34);    
-    Q_nonlin_eq_constraint12 = zeros(34);    
+    Q_nonlin_eq_constraint12 = zeros(34);  
+    Q_nonlin_eq_constraint13 = zeros(34);    
+    Q_nonlin_eq_constraint14 = zeros(34); 
+    Q_nonlin_eq_constraint15 = zeros(34); 
     Q_nonlin_ineq_constraint1 = zeros(34);    
 
     q_nonlin_eq_constraint1 = zeros(34,1);
@@ -285,7 +288,10 @@ for i = 2:length(time_series)
     q_nonlin_eq_constraint10 = zeros(34,1);
     q_nonlin_eq_constraint11 = zeros(34,1);
     q_nonlin_eq_constraint12 = zeros(34,1);
+    q_nonlin_eq_constraint13 = zeros(34,1);
     q_nonlin_ineq_constraint1 = zeros(34,1);
+    
+
     % SRR - Formulating Constraint: R(t+1)*z(t+1) - Phi(t+1) = 0  
     %       Note that this is 3 by 1 matrix system 
     % This gives 3 quadratic equations. We need 3 quadcon since dim(xT*Q*x) = 1
@@ -395,6 +401,33 @@ for i = 2:length(time_series)
     model.quadcon(13).q = q_nonlin_ineq_constraint1;
     model.quadcon(13).rhs = 0.0;
     model.quadcon(13).sense = '>';
+    
+    % SRR - OPTIONAL: Formulating Constraint for z(t). R(t)*z(t) = Phi(t), for k =0. 
+    % Example row: R(1,1)*z(t, element1) + R(1,2)*z(t, element2) + 
+    % R(1,3)*z(t, element) = Phi(t, element 1)
+    Q_nonlin_eq_constraint13(17,11)= 1.0;
+    Q_nonlin_eq_constraint13(18,12)= 1.0;
+    Q_nonlin_eq_constraint13(19,13)= 1.0;
+    model.quadcon(14).Qc = sparse(Q_nonlin_eq_constraint13);
+    model.quadcon(14).q = q_nonlin_eq_constraint13;
+    model.quadcon(14).rhs = xt(1);
+    model.quadcon(14).sense = '=';
+    
+    Q_nonlin_eq_constraint14(20,11)= 1.0;
+    Q_nonlin_eq_constraint14(21,12)= 1.0;
+    Q_nonlin_eq_constraint14(22,13)= 1.0;
+    model.quadcon(15).Qc = sparse(Q_nonlin_eq_constraint14);
+    model.quadcon(15).q = q_nonlin_eq_constraint13;
+    model.quadcon(15).rhs = xt(2);
+    model.quadcon(15).sense = '=';
+    
+    Q_nonlin_eq_constraint15(23,11)= 1.0;
+    Q_nonlin_eq_constraint15(24,12)= 1.0;
+    Q_nonlin_eq_constraint15(25,13)= 1.0;
+    model.quadcon(16).Qc = sparse(Q_nonlin_eq_constraint15);
+    model.quadcon(16).q = q_nonlin_eq_constraint13;
+    model.quadcon(16).rhs = xt(3);
+    model.quadcon(16).sense = '=';
     
 
     ne = size(Aeq,1);
