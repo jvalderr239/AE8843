@@ -21,8 +21,8 @@ class RLdMPC:
     qv = np.sqrt(1)
     qomega = np.sqrt(1)
     # Define time
-    t0, tf = 0, 1
-    num_pts = 100
+    t0, tf = 0, 20
+    num_pts = int(1/.01)
     time = np.linspace(t0, tf, num_pts+1)
     dT = time[1]-time[0]
     time_elapsed = 0
@@ -63,7 +63,6 @@ class RLdMPC:
 
     def make_vector(self, item):
         """
-
         :param item: item to repeat
         :return: return list of repeated items
         """
@@ -97,8 +96,8 @@ class RLdMPC:
             for idx in range(self.horizon):
 
                 utk.append(self.propagate(phit.T[0], A, b, Q, self.Kstar))
-                phit = np.matmul(A, phit) \
-                       + np.matmul(b, utk[idx])
+                phit = np.matmul(A*self.dT + np.eye(3), phit) \
+                       + utk[idx]
                 yt = np.matmul(self.C_est, phit)
                 rt += np.matmul(phit, phit.T)
                 Q = np.linalg.pinv(rt)
@@ -138,11 +137,12 @@ class RLdMPC:
             print("Next initial state: \n")
             print(self.vehicle.state[self.xidx], "\n", self.vehicle.state[self.yidx])
             print("----------------------------------")
-
+            obj += new_output*new_output + self.R*control*control + np.matmul(np.matmul(new_phi.T, self.CCov), new_phi)
             if np.linalg.norm(new_phi) <= 1e-3:
                 break
 
             self.update_time()
+        return obj
 
     def compute_state_with_rldmpc(self):
         def compute_state_with_opt_mu(self):
@@ -203,7 +203,6 @@ class RLdMPC:
                 print("Next initial state: \n")
                 print(self.vehicle.state[self.xidx], "\n", self.vehicle.state[self.yidx])
                 print("----------------------------------")
-
                 self.update_time()
     def opt(self, t, A, b):
         obj = 0
@@ -467,8 +466,7 @@ class RLdMPC:
 
         "Plot history of the vehicle"
         color = 'red'
-        tt = np.arange(time)
-        time = [item/10.0 for item in tt]
+        time = np.arange(time)
         x_history = [item[0]for item in state_history]
         y_history = [item[1]for item in state_history]
         theta_history = [item[2] for item in state_history]
@@ -481,7 +479,7 @@ class RLdMPC:
         plt.ylabel("State Variables")
         plt.xlabel('Time Index')
         plt.xlim([time[0], time[-1]])
-        plt.ylim([-1000, 1000])
+        plt.ylim([-10, 10])
         plt.grid(axis='both', color='0.95')
         plt.show()
 
@@ -495,8 +493,7 @@ class RLdMPC:
 
     @staticmethod
     def plot_control_history(time, control_history):
-        time = np.arange(time-1)
-        tt = [item / 10.0 for item in time]
+        tt = np.arange(time-1)
         v_history = [item[0] for item in control_history]
         plt.figure()
         plt.plot(tt, v_history, 'm--')
@@ -504,7 +501,7 @@ class RLdMPC:
         plt.xlabel('Time Index')
         plt.ylabel('Input u(t)')
         plt.xlim([tt[0], tt[-1]])
-        plt.ylim([-100, 100])
+        plt.ylim([-10, 10])
         plt.grid(axis='both', color='0.95')
         plt.show()
 
