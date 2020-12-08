@@ -52,7 +52,7 @@ theta_truth = [0;
                1;
                0]; % Observing capacitor voltage
            
-Tf = 40; % seconds
+Tf = 30; % seconds
 time_series = 0:dt:Tf;
 % SRR - Initializing k_star to all zeros, the same way the author does in 
 % page 5, "Initialiation - K_t0 = 0_n" 
@@ -184,7 +184,7 @@ for i = 2:length(time_series)
     
     lb = ones(17,1)*-inf;
     lb(1) = -2000;
-    lb(2) = -100;
+    lb(2) = -10;
     
     ub = lb*-1;
     %% quadprog analysis
@@ -237,43 +237,20 @@ end
 
 figure
 hold on
-plot(time_series(1:end), optimal_x(2,:))
-xlabel('Time')
-ylabel('Voltage')
-title('Voltage Across Capacitor')
-
-figure
-hold on
 plot(time_series(1:end), optimal_x(1,:))
-xlabel('Time')
-ylabel('Current')
-title('Current through Inductor 2')
-
-figure
-hold on
+plot(time_series(1:end), optimal_x(2,:))
 plot(time_series(1:end), optimal_x(3,:))
+plot(time_series(1:end),ustar(1,:))
 xlabel('Time')
-ylabel('Current')
-title('Current Through Inductor 1')
+legend('Current in i_2','Voltage','Current in i_1', 'Control Input')
+title('System Response and Control Input')
 
 figure
 hold on
 plot(time_series(1:end),y_measured(1,:),'r')
 xlabel('time')
 ylabel('output y')
-title ('Measurement of Inductor 1 Current as a function of time')
-
-figure
-hold on
-plot(time_series(1:end),ustar(1,:))
-title('u star control plot')
-xlabel('Time')
-ylabel('u star')
-
-
-
-
-
+title ('Measurement of i_1 Current')
 
 
            
