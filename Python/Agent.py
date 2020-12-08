@@ -7,62 +7,45 @@ class Agent(object):
     : param state : (float) numpy array [x-coordinate, y-coordinate, yaw-angle].T
     """
     """
-
-
     phik+1 = A*phik + dt Bu
     yk+1 = Cxk+1 + dt
-
-
     xdot = vcos(theta)
     ydot = vsin(theta)
     thetadot = thetadot 
-
     xk+1 = xk + dt * vcos(theta)
     yk+1 = yk + dt* vsin(theta)
     thetak+1 = thetak + dt* thetadot
-
     A = [1 0 0; 
         0 1 0; 
         0 0 1];
-
     B = [cos(theta) 0]
         [sin(theta) 0][v]
         [0          1][thetadot]
-
     C = [1 0 0]
         [0 1 0]
         [0 0 1]
     Chat = [chat1 0 0]
             [0 chat2 0]
             [0 0 chat3]
-
     phi = [x]
         [y]
         [theta]
-
     phi_augmented = [ x  ]
                     [y    ]
                     [theta]
                     [chat1]
                     [chat2]
                     [chat3]
-
-
     phit, theta_hat, Pt = 100*sigma * eye
-
     y = theta * phit + noise
-
-
-
     """
     # state indices
     xidx, yidx, thetaidx = 0, 1, 2
     # control max vals
     wheel_base = .7
     near_zero = 1e-05
-
     def __init__(self, initial_state,
-                 u_max=100,
+                 u_max=5,
                  maxTol=5):
         self.state_history = [initial_state]
         self.control_history = []
@@ -105,14 +88,14 @@ class Agent(object):
         return False
 
     def system_matrix(self):
-        return np.array([[2.5, -1, -0.1],
-                         [1, self.near_zero, self.near_zero],
-                         [self.near_zero, 1, self.near_zero]], dtype=np.float)
+        return np.array([[0, 1, -0.1],
+                         [-2/3, -1/3, 1/3],
+                         [0, 1/7, -3/7]], dtype=np.float)
 
     @staticmethod
     def control_matrix():
-        return np.array([[1],
-                         [0],
+        return np.array([[0],
+                         [-1/3],
                          [0]], dtype=np.float)
 
     @staticmethod
