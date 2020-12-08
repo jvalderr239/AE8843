@@ -4,7 +4,7 @@ clc;clear;close all;
 rng('default')
 % Initial State [x;y;theta]
 variance = 1;
-
+dt = 0.01;
 init_state = [2;
               1;
               3];
@@ -26,13 +26,20 @@ k2 = 2;
 m = 5;
 b = 2;
 
+% A = [0,             1,   0;
+%      -(k1+k2)./m,   0,   k1./m;
+%      k1./b,         0,  -k1./b]; % A mat
+%  
+% B = [0;
+%      1./m;
+%      0];    
 A = [0,             1,   0;
      -(k1+k2)./m,   0,   k1./m;
-     k1./b,         0,  -k1./b]; % A mat
+     k1./b,         0,  -k1./b] * dt + eye(3); % A mat
  
 B = [0;
      1./m;
-     0];    
+     0]*dt;    
  
  theta = [5;
           2;
@@ -49,7 +56,6 @@ theta_truth = [0;
                1];
            
 Tf = 40; % seconds
-dt = 0.01;
 time_series = 0:dt:Tf;
 % SRR - Initializing k_star to all zeros, the same way the author does in 
 % page 5, "Initialiation - K_t0 = 0_n" 
@@ -214,7 +220,7 @@ for i = 2:length(time_series)
     y_measured(:,i) = theta_truth'*xt + (sqrt(variance) * randn(1,1)); 
     y_hat = y_measured(:,i);
 %   AS Fixing propagation  
-    xstar(:,i) = xt + (A*xt+B*ustar(:,i))*dt;   %Linearized Model Update
+    xstar(:,i) = A*xt+B*ustar(:,i);   %Model Update
     xt = xstar(:,i);
     % After finding min and propagating, recalculate G, theta_hat, and
     % P
