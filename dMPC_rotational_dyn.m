@@ -50,7 +50,7 @@ theta_truth = [1;
                0;
                0];
            
-Tf = 2+0; % seconds
+Tf = 20; % seconds
 time_series = 0:dt:Tf;
 % SRR - Initializing k_star to all zeros, the same way the author does in 
 % page 5, "Initialiation - K_t0 = 0_n" 
@@ -182,7 +182,7 @@ for i = 2:length(time_series)
     
     lb = ones(17,1)*-inf;
     lb(1) = -2000;
-    lb(2) = -100;
+    lb(2) = -5;
     
     ub = lb*-1;
     %% quadprog analysis
@@ -235,39 +235,20 @@ end
 
 figure
 hold on
-plot(time_series(1:end), optimal_x(2,:))
-xlabel('Time')
-ylabel('theta1 dot')
-title('theta1 dot plot')
-
-figure
-hold on
 plot(time_series(1:end), optimal_x(1,:))
-xlabel('Time')
-ylabel('theta1')
-title('theta1 plot')
-
-figure
-hold on
+plot(time_series(1:end), optimal_x(2,:))
 plot(time_series(1:end), optimal_x(3,:))
+plot(time_series(1:end),ustar(1,:))
 xlabel('Time')
-ylabel('theta2 dot')
-title('theta2 dot plot')
+legend('\Theta_1','\Theta_1 Dot','\Theta_2','Control Input')
+title('System Response and Control Input')
 
 figure
 hold on
 plot(time_series(1:end),y_measured(1,:),'r')
 xlabel('time')
 ylabel('y')
-title ('Measurement of theta1 as a function of time')
-
-figure
-hold on
-plot(time_series(1:end),ustar(1,:))
-title('u star control plot')
-xlabel('Time')
-ylabel('u star')
-
+title ('Measurement of \theta_1 as a function of time')
 
 
 
