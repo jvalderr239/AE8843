@@ -55,7 +55,7 @@ theta_truth = [0;
                0;
                1];
            
-Tf = 40; % seconds
+Tf = 20; % seconds
 time_series = 0:dt:Tf;
 % SRR - Initializing k_star to all zeros, the same way the author does in 
 % page 5, "Initialiation - K_t0 = 0_n" 
@@ -187,7 +187,7 @@ for i = 2:length(time_series)
     
     lb = ones(17,1)*-inf;
     lb(1) = -2000;
-    lb(2) = -100;
+    lb(2) = -5;
     
     ub = lb*-1;
     %% quadprog analysis
@@ -240,41 +240,20 @@ end
 
 figure
 hold on
-plot(time_series(1:end), optimal_x(2,:))
-xlabel('Time')
-ylabel('xdot')
-title('xdot plot')
-
-figure
-hold on
 plot(time_series(1:end), optimal_x(1,:))
-xlabel('Time')
-ylabel('x position')
-title('x plot')
-
-figure
-hold on
+plot(time_series(1:end), optimal_x(2,:))
 plot(time_series(1:end), optimal_x(3,:))
+plot(time_series(1:end),ustar(1,:))
 xlabel('Time')
-ylabel('z position')
-title('z plot')
+legend('X Position','Xdot','Z Position', 'Control Input')
+title('System Response and Control Input')
 
 figure
 hold on
 plot(time_series(1:end),y_measured(1,:),'r')
 xlabel('time')
-ylabel('output y')
+ylabel('Output y')
 title ('Measured Z position as a function of time')
-
-figure
-hold on
-plot(time_series(1:end),ustar(1,:))
-title('u star control plot')
-xlabel('Time')
-ylabel('u star')
-
-
-
 
 
 
